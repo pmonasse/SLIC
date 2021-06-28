@@ -249,28 +249,6 @@ void MoveCenters(std::vector<Superpixel>& Superpixels, std::vector<std::vector<i
     }
 }
 
-// ----------------------------------------------- CHECKERS AND TESTS (Test version) ----------------------------------------------- //
-void GridCheck(int K, int S, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img, Imagine::Window W, int subwin) {
-      // Tests
-      // Superpixel grid check
-        Imagine::setActiveWindow(W, subwin);
-        for(int k = 0; k < K; k++) {
-            // Draw a circle around the center of each Superpixel and draw a rectangle delimiting its 2S * 2S searching zone
-            // to check if the grid is well initialized
-            // [Update] : It is !
-            Imagine::drawRect(Superpixels[k].get_x() - S, Superpixels[k].get_y() - S, 2*S, 2*S, Imagine::BLACK);
-        }
-        for(int k = 0; k < K; k++) {
-            if(is_in(Superpixels[k].get_x(), Superpixels[k].get_y(), Img)) {
-                Imagine::fillCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 5, Superpixels[k].get_color());
-            }
-            else {
-                Imagine::fillCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 5, Imagine::RED);
-            }
-            Imagine::drawCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 7, Imagine::RED, 2);
-        }
-}
-
 void InitStatusCheck(int S, int K, int w, int h, std::vector<Superpixel> Superpixels) {
     // Status check (test version)
     std::cout << "S = " << S << std::endl;

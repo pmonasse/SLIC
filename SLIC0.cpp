@@ -10,36 +10,23 @@
 
 #include "SLICTools.h"
 
-
-void ImageSLICingAlgorithm(Imagine::Image<Imagine::Color> Img, Imagine::Image<Imagine::Color> ImgDestination, int m, int K, int w, int h, bool displayBorders, bool displaySuperpixels) {
-
+void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
+                           Imagine::Image<Imagine::Color>& ImgDestination,
+                           int m, int K,
+                           bool displayBorders, bool displaySuperpixels) {
+    const int w=Img.width(), h=Img.height();
     Imagine::Image<int> l(w, h);
 
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                                  SLIC algorithm                                 ////
-    //// ------------------------------------- </> ------------------------------------- ////
-
     std::vector<Superpixel> Superpixels = SLIC(Img, l, m, K, h, w);
-
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                              Ensuring connectivity                              ////
-    //// ------------------------------------- </> ------------------------------------- ////
-
     ConnectivityEnforcement(K, w, h, l, Superpixels, Img);
 
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                               Output conditioning ?                             ////
-    //// ------------------------------------- </> ------------------------------------- ////
-
     // Haven't determined yet what to return, maybe returning l is enough
-
-    for(int i=0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
+    for(int i=0; i<w; i++) {
+        for(int j=0; j<h; j++) {
             // This loop fills each Superpixel's _contents vector with the pixels it contains, as indicated by the values in l
             //
             // Recall : l(i, j) is an int corresponding to the index of the Superpixel containing Img(i, j) in Superpixels
             // e. g. : l(i, j) = k means that Img(i, j) belongs to Superpixels[k]
-
             Superpixels[l(i, j)].push_contents(Imagine::Coords<2>(i, j));
         }
     }
@@ -76,19 +63,12 @@ int main(int argc, char* argv[]) {
     Imagine::Image<Imagine::Color> DestinationImg = Img.clone();
 
     std::string names[] = {"Original image", "SLICced image"};
-    Imagine::Window W = Imagine::openComplexWindow(w + 20, h + 20, "SLIC 101", 2, names);   // A window with 2 subwindows
+    Imagine::Window W = Imagine::openComplexWindow(w + 20, h + 20, "SLIC 101",
+                                                   2, names);
 
     DisplayImage(Img, W, 0);
 
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                                      SLIC                                       ////
-    //// ------------------------------------- </> ------------------------------------- ////
-
-    ImageSLICingAlgorithm(Img, DestinationImg, m, K, w, h, displayBorders, displaySuperpixels);
-
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                                 Display and save                                ////
-    //// ------------------------------------- </> ------------------------------------- ////
+    ImageSLICingAlgorithm(Img, DestinationImg, m, K, displayBorders, displaySuperpixels);
 
     DisplayImage(DestinationImg, W, 1);
 

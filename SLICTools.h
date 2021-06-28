@@ -18,8 +18,6 @@ void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name);
 void DisplayImage(const Imagine::Image<Imagine::Color>& Img, Imagine::Window W, int subwin);
 
 // ----------------------------------------------- CHECKERS AND TESTS (Test version) ----------------------------------------------- //
-void GridCheck(int K, int S, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img, Imagine::Window W, int subwin);
-
 void InitStatusCheck(int S, int K, int w, int h, std::vector<Superpixel> Superpixels);
 
 void ConnCompCheck(Imagine::Image<int> ConnectedComponents, int label_num, int w, int h);
@@ -32,8 +30,6 @@ void DisplayColorConnComp(int K, int w, int h, Imagine::Image<int> l, std::vecto
 // Displays the connected components of the Superpixels in random colors
 void DisplayRandColorConnComp(int K, int w, int h, Imagine::Image<int> l);
 
-// Displays the centers
-void CentersCheck(int K, std::vector<Superpixel> Superpixels);
 // ----------------------------------------------- CHECKERS AND TESTS (Test version) // END ----------------------------------------------- //
 
 //////////////////////////////////
