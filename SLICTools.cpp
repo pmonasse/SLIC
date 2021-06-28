@@ -1,4 +1,7 @@
 #include "SLICTools.h"
+#include <stack>
+#include <queue>
+#include <chrono>
 
 //// ------------------------------------- </> ------------------------------------- ////
 ////                                 Useful functions                                ////
@@ -70,30 +73,24 @@ int color_dist(Imagine::Color col1, Imagine::Color col2) {
 ////                                  Main functions                                 ////
 //// ------------------------------------- </> ------------------------------------- ////
 
-Imagine::Image<Imagine::Color> LoadImage(const char* img, int&w, int&h) {
-
-    Imagine::Color* colImg;
-
+Imagine::Image<Imagine::Color> LoadImage(const char* img) {
     // Loading the image
     // Test to ensure the image has been loaded
-    if(!Imagine::loadColorImage(img, colImg, w, h)) {
+    Imagine::Image<Imagine::Color> Img;
+    if(!Imagine::load(Img, img)) {
         std::cout << "Image loading error!" << std::endl;
         Imagine::anyClick();
     }
 
-    // Putting the data of colImg (an array of colors representing the pixels) into an Imagine::Image
-    Imagine::Image<Imagine::Color, 2> Img(colImg, w, h, true);
-        // colImg is the data
-        // w and h are image's width and height
-        // true is for handleDelete : Image deletes itself when destroyed
     return Img;
 }
 
-void DisplayImage(Imagine::Image<Imagine::Color> Img, Imagine::Window W, int subwin, int w, int h) {
+void DisplayImage(const Imagine::Image<Imagine::Color>& Img, Imagine::Window W, int subwin) {
 
     // Putting Image Img in Window W, subwindow subwin
     Imagine::setActiveWindow(W, subwin);
-    Imagine::putColorImage(0, 0, Img.data(), w, h);
+    display(Img);
+    //    Imagine::putColorImage(0, 0, Img.data(), Img.width(), Img.height());
 
 }
 
@@ -719,16 +716,11 @@ void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixel
     std::cin >> displaySuperpixels;
 }
 
-void SaveSLICImage(Imagine::Image<Imagine::Color> SLICImage, int w, int h, std::string imageName) {
-
-    std::string SLICName(srcPath());
-    SLICName.append("SLICed_");
-    SLICName.append(imageName);
-
-    Imagine::saveColorImage(SLICName, SLICImage.data(), w, h);
-
-    std::cout << "SLICed Image has been saved in " << srcPath() << ", under the name '" << SLICName << "'!" << std::endl;
-
+void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name) {
+    if(! Imagine::save(img, name)) {
+        std::cerr << "Failed saving image " << name << std::endl;
+        throw "Error saving image";
+    }
 }
 
 void RandInit() {

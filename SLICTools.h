@@ -1,31 +1,12 @@
 #ifndef SLICTOOLS_H
 #define SLICTOOLS_H
 
-#include <iostream>
-#include <chrono>
-// Chrono is used for evaluating complexity
-
-#include <stack>
-#include <queue>
-
 #include <Imagine/Images.h>
-#include <Imagine/Graphics.h>
 
 #include "superpixel.h"
 
-#include "superpixel.h"
-
-//// ------------------------------------- </> ------------------------------------- ////
-////                                  Main functions                                 ////
-//// ------------------------------------- </> ------------------------------------- ////
-
-//////////////
-/// \brief Loads the image img, and returns it as an Imagine::Image<Imagine::Color>
-/// \param img
-/// \param w
-/// \param h
-/// \return
-Imagine::Image<Imagine::Color> LoadImage(const char* img, int&w, int&h);
+Imagine::Image<Imagine::Color> LoadImage(const char* name);
+void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name);
 
 //////////////////
 /// \brief Displays the image Img (of dimensions w*h) in the subwindow subwin of the window W
@@ -34,7 +15,7 @@ Imagine::Image<Imagine::Color> LoadImage(const char* img, int&w, int&h);
 /// \param subwin
 /// \param w
 /// \param h
-void DisplayImage(Imagine::Image<Imagine::Color> Img, Imagine::Window W, int subwin, int w, int h);
+void DisplayImage(const Imagine::Image<Imagine::Color>& Img, Imagine::Window W, int subwin);
 
 // ----------------------------------------------- CHECKERS AND TESTS (Test version) ----------------------------------------------- //
 void GridCheck(int K, int S, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img, Imagine::Window W, int subwin);
@@ -85,16 +66,6 @@ void MakeSLICImage(bool superpixels, bool borders, Imagine::Image<Imagine::Color
 /// \param displayBorders
 /// \param displaySuperpixels
 void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixels);
-
-////////////////////////
-/// \brief Saves an Image with the name "SLIC-[imageName]"
-/// (Yes, it will be used to save the SLICed Image, good call)
-/// /!\ Currently, saves the image in the build directory, we'll have to fix that
-/// \param SLICImage
-/// \param w
-/// \param h
-/// \param imageName
-void SaveSLICImage(Imagine::Image<Imagine::Color> SLICImage, int w, int h, std::string imageName);
 
 /////////////////////
 /// \brief Initializes the random number generators with current time
