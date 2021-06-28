@@ -17,7 +17,7 @@ void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
     const int w=Img.width(), h=Img.height();
     Imagine::Image<int> l(w, h);
 
-    std::vector<Superpixel> Superpixels = SLIC(Img, l, m, K, h, w);
+    std::vector<Superpixel> Superpixels = SLIC(Img, l, m, K);
     ConnectivityEnforcement(K, w, h, l, Superpixels, Img);
 
     // Haven't determined yet what to return, maybe returning l is enough
@@ -31,11 +31,8 @@ void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
         }
     }
 
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                              Making the SLIC image                              ////
-    //// ------------------------------------- </> ------------------------------------- ////
-
-    MakeSLICImage(displaySuperpixels, displayBorders, ImgDestination, Img, w, h, l, Superpixels);
+    MakeSLICImage(displaySuperpixels, displayBorders, ImgDestination, Img,
+                  l, Superpixels);
     // Maybe it would be better to return l, or even the SLICed image (even if it is saved) ?
 }
 
@@ -45,7 +42,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "Usage: " << argv[0] << " imgIn imgOut" << std::endl;
         return 1;
     }
-    
+
     // Loading the image
     // This function raises an error if the loading fails
     Imagine::Image<Imagine::Color> Img = LoadImage(argv[1]);

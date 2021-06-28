@@ -104,8 +104,11 @@ void DisplayImage(const Imagine::Image<Imagine::Color>& Img, Imagine::Window W, 
 /// \param h
 /// \param Img
 /// \return
-void InitGrid(std::vector<Superpixel>& Superpixels, Imagine::Image<int> l, Imagine::Image<float> d, int& K, int& S, int w, int h, Imagine::Image<Imagine::Color> Img) {
-
+void InitGrid(std::vector<Superpixel>& Superpixels,
+              Imagine::Image<int>& l, Imagine::Image<float>& d,
+              int& K, int& S,
+              const Imagine::Image<Imagine::Color>& Img) {
+    const int w=Img.width(), h=Img.height();
     S = int(sqrt((w*h)/K));
     // The initial size of the Superpixels (cf. article)
 
@@ -115,10 +118,10 @@ void InitGrid(std::vector<Superpixel>& Superpixels, Imagine::Image<int> l, Imagi
     K = newK;
 
     // Initialization of d and l (cf. article)
-    for(int i = 0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
-            l(i, j) = -1;
-            d(i, j) = float(INFINITY);
+    for(int i=0; i<w; i++) {
+        for(int j=0; j<h; j++) {
+            l(i,j) = -1;
+            d(i,j) = float(INFINITY);
         }
     }
 
@@ -127,8 +130,8 @@ void InitGrid(std::vector<Superpixel>& Superpixels, Imagine::Image<int> l, Imagi
     int dist2border_h = w - S*(w/S);
     int dist2border_v = h - S*(h/S);
     // Initialization of the superpixels with the color of their center
-    for(int i = 0; i < w/S; i++) {
-        for(int j = 0; j < h/S; j++) {
+    for(int i=0; i<w/S; i++) {
+        for(int j=0; j<h/S; j++) {
             Superpixels.push_back(Superpixel(S/2 + dist2border_h/2 + i*S, S/2 + dist2border_v/2 + j*S, Img(S/2 + dist2border_h/2 + i*S, S/2 + dist2border_v/2 + j*S), 0));
         }
     }
@@ -143,10 +146,8 @@ void InitGrid(std::vector<Superpixel>& Superpixels, Imagine::Image<int> l, Imagi
 /// \param S
 /// \param l
 /// \param d
-void AssignmentStep(std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img, int K, int m, int S, Imagine::Image<int> l, Imagine::Image<float> d) {
-
+void AssignmentStep(const std::vector<Superpixel>& Superpixels, const Imagine::Image<Imagine::Color>& Img, int K, int m, int S, Imagine::Image<int>& l, Imagine::Image<float>& d) {
     for(int k = 0; k < K; k++) {
-
         for(int i = 0; i < 2*S; i++) {
             for(int j = 0; j < 2*S; j++) {
                 // Looking at the pixels in a 2S x 2S surrounding of the Superpixel Superpixels[k]
@@ -185,37 +186,32 @@ void AssignmentStep(std::vector<Superpixel> Superpixels, Imagine::Image<Imagine:
 /// \param l
 /// \param Img
 /// \return
-void UpdateStep(std::vector<std::vector<int>>& newCenters, int K, int w, int h, Imagine::Image<int> l, Imagine::Image<Imagine::Color> Img) {
+void UpdateStep(std::vector<std::vector<int>>& newCenters, int K,
+                const Imagine::Image<int>& l,
+                const Imagine::Image<Imagine::Color>& Img) {
 
-    for(int k = 0; k < K; k++) {
-        for(int l = 0; l < 6; l++) {
+    for(int k=0; k<K; k++)
+        for(int l=0; l<6; l++)
             newCenters[k][l] = 0;
-        }
-    }
+
     // A vector containing in this order the future x, y, r, g, b of the new barycenters
     // and a counter of the number of pixels in the updated Superpixel represented by newCenters[k]
 
-    for(int i = 0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
+    const int w=Img.width(), h=Img.height();
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++) {
             // Adding the values (x, y, r, g, b) of each pixel to its Superparent center's vector in newCenters
-            std::vector<int> currPix = {i, j, Img(i, j).r(), Img(i, j).g(), Img(i, j).b()};
-                for(int s = 0; s < 5; s++) {
-                    newCenters[l(i, j)][s] += currPix[s];
-                }
-                newCenters[l(i, j)][5] += 1;
-            }
+            int currPix[5] = {i,j, Img(i,j).r(),Img(i,j).g(),Img(i,j).b()};
+            for(int s=0; s<5; s++)
+                newCenters[l(i,j)][s] += currPix[s];
+            ++newCenters[l(i,j)][5];
         }
 
-//        // Status check (test version)
-//        std::cout << "--- Sum done" << std::endl;
-
-    for(int k = 0; k < K; k++) {
-        for(int s = 0; s < 5; s++) {
-            // Computing the proper barycenter of the pixels of each Superpixels
-            // by dividing each value by the number of pixels in the Superpixel
+    // Computing the proper barycenter of the pixels of each Superpixels
+    // by dividing each value by the number of pixels in the Superpixel
+    for(int k=0; k<K; k++)
+        for(int s=0; s<5; s++)
             newCenters[k][s] /= newCenters[k][5];
-        }
-    }
 }
 
 ///////////////////
@@ -267,90 +263,6 @@ void InitStatusCheck(int S, int K, int w, int h, std::vector<Superpixel> Superpi
 
 }
 
-void ConnCompCheck(Imagine::Image<int> ConnectedComponents, int label_num, int w, int h) {
-
-    for(int l = 0; l < label_num; l++) {
-        Imagine::Color lCol(rand() % 256, rand() % 256, rand() % 256);
-        for(int i = 0; i < w; i++) {
-            for(int j = 0; j < h; j++) {
-                if(ConnectedComponents(i, j) == l) {
-                    Imagine::drawPoint(i, j, lCol);
-                }
-            }
-        }
-    }
-    Imagine::anyClick();
-}
-
-void DisplayConnComp(int K, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels) {
-    for(int i = 0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
-            if(l(i, j) == -1) {
-                Imagine::drawPoint(i, j, Imagine::BLACK);
-            }
-            else {
-                Imagine::drawPoint(i, j, Superpixels[l(i, j)].get_color());
-            }
-        }
-    }
-    for(int k = 0; k < K; k++) {
-        Imagine::fillCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 4, Superpixels[k].get_color());
-        Imagine::drawCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 7, Imagine::RED, 3);
-    }
-
-    std::cout << "Connected components displayed" << std::endl << "Click to continue" << std::endl;
-    Imagine::anyClick();
-}
-
-// Same as previous but displays the colors in the Image
-void DisplayColorConnComp(int K, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img) {
-    for(int i = 0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
-            if(l(i, j) == -1) {
-                Imagine::drawPoint(i, j, Imagine::BLACK);
-            }
-            else {
-                Imagine::drawPoint(i, j, Img(i, j));
-            }
-        }
-    }
-    for(int k = 0; k < K; k++) {
-        Imagine::fillCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 4, Superpixels[k].get_color());
-        Imagine::drawCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 7, Imagine::RED, 3);
-    }
-
-    std::cout << "Connected components displayed" << std::endl << "Click to continue" << std::endl;
-    Imagine::anyClick();
-}
-
-// Displays the connected components of the Superpixels in random colors
-void DisplayRandColorConnComp(int K, int w, int h, Imagine::Image<int> l) {
-    for(int k = 0; k < K; k++) {
-        Imagine::Color randCol(rand() % 256, rand() % 256, rand() % 256);
-        for(int i = 0; i < w; i++) {
-            for(int j = 0; j < h; j++) {
-                if(l(i, j) == -1) {
-                    Imagine::drawPoint(i, j, Imagine::BLACK);
-                    Imagine::drawCircle(i, j, 10, Imagine::RED);
-                }
-                if(l(i, j) == k) {
-                    Imagine::drawPoint(i, j, randCol);
-                }
-            }
-        }
-    }
-
-    std::cout << "Connected Superpixels displayed" << std::endl << "Click to continue" << std::endl;
-    Imagine::anyClick();
-}
-
-// Displays the centers
-void CentersCheck(int K, std::vector<Superpixel> Superpixels) {
-    for(int k = 0; k < K; k++) {
-        Imagine::fillCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 5, Superpixels[k].get_color());
-        Imagine::drawCircle(Superpixels[k].get_x(), Superpixels[k].get_y(), 5, Imagine::RED, 2);
-    }
-}
 // ----------------------------------------------- CHECKERS AND TESTS (Test version) // END ----------------------------------------------- //
 
 /////////////////////////
@@ -652,34 +564,29 @@ void InitMinGradient(int K, std::vector<Superpixel>& Superpixels, Imagine::Image
     }
 }
 
-void MakeSLICImage(bool superpixels, bool borders, Imagine::Image<Imagine::Color>& ImgDestination, Imagine::Image<Imagine::Color> Img, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels) {
-
+void MakeSLICImage(bool superpixels, bool borders,
+                   Imagine::Image<Imagine::Color>& ImgDestination,
+                   const Imagine::Image<Imagine::Color>& Img,
+                   const Imagine::Image<int>& l,
+                   const std::vector<Superpixel>& Superpixels) {
+    const int w=Img.width(), h=Img.height();
     assert(ImgDestination.width() == w && ImgDestination.height() == h);
 
     // Replacing the color of each pixel by its Superparent's color
-    if(superpixels) {
-        for(int i = 0; i < w; i ++) {
-            for(int j = 0; j < h; j++) {
-                ImgDestination(i, j) = Superpixels[l(i, j)].get_color();
-            }
-        }
-    }
+    if(superpixels)
+        for(int j=0; j<h; j++)
+            for(int i=0; i<w; i++)
+                ImgDestination(i,j) = Superpixels[l(i,j)].get_color();
 
     // Drawing the borders between the Superpixels
-    if(borders) {
-        for(int i = 0; i < w; i++) {
-            for(int j = 0; j < h; j++) {
-                for(int n = 0; n < 4; n++) {
+    if(borders)
+        for(int j=0; j<h; j++)
+            for(int i=0; i<w; i++)
+                for(int n=0; n<2; n++) {
                     Imagine::Coords<2> nei = neighbor(i, j, n);
-                    if(is_in(nei, Img)) {
-                        if(l(nei) != l(i, j)) {
-                            ImgDestination(i, j) = Imagine::RED;
-                        }
-                    }
+                    if(is_in(nei, Img) && l(nei) != l(i, j))
+                        ImgDestination(i, j) = Imagine::WHITE;
                 }
-            }
-        }
-    }
 }
 
 void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixels) {
@@ -701,16 +608,7 @@ void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name) {
     }
 }
 
-void RandInit() {
-
-    time_t now;
-    time(&now);
-
-    srand((unsigned int)now);
-
-}
-
-std::vector<Superpixel> SLIC(Imagine::Image<Imagine::Color> Img, Imagine::Image<int> l, int m, int K, int h, int w) {
+std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img, Imagine::Image<int>& l, int m, int K) {
 
     //// ------------------------------------- </> ------------------------------------- ////
     ////                                 Initialization                                  ////
@@ -721,13 +619,14 @@ std::vector<Superpixel> SLIC(Imagine::Image<Imagine::Color> Img, Imagine::Image<
 
     // Status check
     std::cout << "Computing SLIC..." << std::endl;
+    const int w=Img.width(), h=Img.height();
 
     std::vector<Superpixel> Superpixels;    // A vector that will contain all the Superpixels
     Imagine::Image<float> d(w, h);  // d(i, j) will be the distance from Img(i, j) to its Superparent Superpixels[l(i, j)]
     int S;  // S will the size of the grid step
 
     // InitSuperpixels initializes l, d, S and Superpixels
-    InitGrid(Superpixels, l, d, K, S, w, h, Img);
+    InitGrid(Superpixels, l, d, K, S, Img);
 
 //    // The minimal gradient initialization doesn't seem to make a difference
 //    InitMinGradient(K, Superpixels, Img, 10);
@@ -765,7 +664,7 @@ std::vector<Superpixel> SLIC(Imagine::Image<Imagine::Color> Img, Imagine::Image<
         ///               Update step               ///
         /// ----------------- /// ----------------- ///
 
-        UpdateStep(newCenters, K, w, h, l, Img);
+        UpdateStep(newCenters, K, l, Img);
         // Now newCenters contains the position and color coordinates of the new barycenters, and the sizes of the corresponding Superpixel
 
         /// ----------------- /// ----------------- ///

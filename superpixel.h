@@ -55,7 +55,7 @@ public:
     /// \param m
     /// \param S
     /// \return float
-    float howFar(Imagine::Color pixel, int i, int j, int m, int S);
+    float howFar(Imagine::Color pixel, int i, int j, int m, int S) const;
     // This distance is the D distance from the article : sqrt((m*euclidianDist/maxEuclidian)^2 + colorDist^2)
     // m is the compactness parameter (user parameter) (weight of the color distance vs. the spatial distance).
     // S is the initial side length of the Superpixel (deduced from the number of Superpixel wished)

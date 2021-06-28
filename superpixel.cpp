@@ -92,9 +92,7 @@ void Superpixel::set_contents(std::vector<Imagine::Coords<2>> contents) {
 }
 
 // Other methods
-float Superpixel::howFar(const Imagine::Color pixel, int i, int j, int m, int S) {
-
-
+float Superpixel::howFar(const Imagine::Color pixel, int i, int j, int m, int S) const {
     float eucldist = sqrt(float((_x - i)*(_x - i)) + float((_y - j)*(_y - j)));
     float colordist = sqrt(float((_col.r() - pixel.r())*(_col.r() - pixel.r())) + float((_col.g() - pixel.g())*(_col.g() - pixel.g())) + float((_col.b() - pixel.b())*(_col.b() - pixel.b())));
     return(sqrt(float(m*m)*(eucldist*eucldist/float(S*S)) + colordist*colordist));
