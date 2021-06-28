@@ -10,13 +10,6 @@ void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name);
 
 void DisplayImage(const Imagine::Image<Imagine::Color>& Img, Imagine::Window W, int subwin);
 
-// ----------------------------------------------- CHECKERS AND TESTS (Test version) ----------------------------------------------- //
-void InitStatusCheck(int S, int K, int w, int h, std::vector<Superpixel> Superpixels);
-
-void ConnCompCheck(Imagine::Image<int> ConnectedComponents, int label_num, int w, int h);
-
-// ----------------------------------------------- CHECKERS AND TESTS (Test version) // END ----------------------------------------------- //
-
 //////////////////////////////////
 /// \brief Ensures that the Superpixels are connected
 /// \param K

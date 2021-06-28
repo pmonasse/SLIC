@@ -127,54 +127,43 @@ void InitGrid(std::vector<Superpixel>& Superpixels,
 
     // These two int are the difference bewteen the width (resp. height) of the Image and the width (resp. height) of the grid
     // They will help center the grid to avoid missing pixels
-    int dist2border_h = w - S*(w/S);
-    int dist2border_v = h - S*(h/S);
+    const int padw = w - S*(w/S), padh = h - S*(h/S), s=S/2;
     // Initialization of the superpixels with the color of their center
-    for(int i=0; i<w/S; i++) {
-        for(int j=0; j<h/S; j++) {
-            Superpixels.push_back(Superpixel(S/2 + dist2border_h/2 + i*S, S/2 + dist2border_v/2 + j*S, Img(S/2 + dist2border_h/2 + i*S, S/2 + dist2border_v/2 + j*S), 0));
-        }
-    }
+    for(int j=0; j*S<h; j++)
+        for(int i=0; i*S<w; i++)
+            Superpixels.push_back(Superpixel(i*S+s+padw/2, j*S+s+padh/2,
+                                             Img(i*S+s+padw/2,j*S+s+padh/2),0));
 }
 
 ///////////////////
 /// \brief Does the assignment step according to the article
-/// \param Superpixels
+/// \param sp
 /// \param Img
 /// \param K
 /// \param m
 /// \param S
 /// \param l
 /// \param d
-void AssignmentStep(const std::vector<Superpixel>& Superpixels, const Imagine::Image<Imagine::Color>& Img, int K, int m, int S, Imagine::Image<int>& l, Imagine::Image<float>& d) {
-    for(int k = 0; k < K; k++) {
-        for(int i = 0; i < 2*S; i++) {
-            for(int j = 0; j < 2*S; j++) {
-                // Looking at the pixels in a 2S x 2S surrounding of the Superpixel Superpixels[k]
-
-                int ip = Superpixels[k].get_x() - S + i;
-                // i is relative to the Superpixel 2S * 2S surrounding, ip is relative to the whole image
-                int jp = Superpixels[k].get_y() - S + j;
-                // same for j and jp
+void AssignmentStep(const std::vector<Superpixel>& sp,
+                    const Imagine::Image<Imagine::Color>& Img,
+                    int K, int m, int S, Imagine::Image<int>& l,
+                    Imagine::Image<float>& d) {
+    for(int k=0; k<K; k++)
+        for(int i=-S; i<S; i++)
+            for(int j=-S; j<S; j++) {
+                // Looking at the pixels in a 2S x 2S surrounding of the Superpixel sp[k]
+                int ip = sp[k].get_x()+i;
+                int jp = sp[k].get_y()+j;
 
                 if(is_in(ip, jp, Img)) {
-                    // If the current pixel is actually a pixel of the image {
-
-                    Imagine::Color currentPix = Img(ip, jp);
-                    // Color of the current pixel
-
-                    float currentDist = Superpixels[k].howFar(currentPix, ip, jp, m, S);
-                    // Compute the distance (D in the article) from the current pixel to the current cluster center
-
-                    if(currentDist < d(ip, jp)) {
-                        // Update the distance and affiliating resp. in d and l
-                        d(ip, jp) = currentDist;
-                        l(ip, jp) = k;
+                    Imagine::Color col = Img(ip,jp);
+                    float dist = sp[k].howFar(col, ip,jp, m, S);
+                    if(d(ip, jp) > dist) {
+                        d(ip,jp) = dist;
+                        l(ip,jp) = k;
                     }
                 }
             }
-        }
-    }
 }
 
 ///////////////////
@@ -186,84 +175,68 @@ void AssignmentStep(const std::vector<Superpixel>& Superpixels, const Imagine::I
 /// \param l
 /// \param Img
 /// \return
-void UpdateStep(std::vector<std::vector<int>>& newCenters, int K,
+void UpdateStep(std::vector<std::vector<int>>& centers, int K,
                 const Imagine::Image<int>& l,
                 const Imagine::Image<Imagine::Color>& Img) {
 
     for(int k=0; k<K; k++)
         for(int l=0; l<6; l++)
-            newCenters[k][l] = 0;
+            centers[k][l] = 0;
 
     // A vector containing in this order the future x, y, r, g, b of the new barycenters
-    // and a counter of the number of pixels in the updated Superpixel represented by newCenters[k]
+    // and a counter of the number of pixels in the updated Superpixel represented by centers[k]
 
     const int w=Img.width(), h=Img.height();
     for(int j=0; j<h; j++)
         for(int i=0; i<w; i++) {
-            // Adding the values (x, y, r, g, b) of each pixel to its Superparent center's vector in newCenters
+            // Adding the values (x, y, r, g, b) of each pixel to its Superparent center's vector in centers
             int currPix[5] = {i,j, Img(i,j).r(),Img(i,j).g(),Img(i,j).b()};
             for(int s=0; s<5; s++)
-                newCenters[l(i,j)][s] += currPix[s];
-            ++newCenters[l(i,j)][5];
+                centers[l(i,j)][s] += currPix[s];
+            ++centers[l(i,j)][5];
         }
 
     // Computing the proper barycenter of the pixels of each Superpixels
     // by dividing each value by the number of pixels in the Superpixel
     for(int k=0; k<K; k++)
         for(int s=0; s<5; s++)
-            newCenters[k][s] /= newCenters[k][5];
+            centers[k][s] /= centers[k][5];
 }
 
 ///////////////////
-/// \brief Computes the squared Euclidian distance between the new positions of the superpixels (stocked in newCenters) and their former positions
+/// \brief Computes the squared Euclidian distance between the new positions of the superpixels (stocked in centers) and their former positions
 /// \param E
 /// \param K
 /// \param Superpixels
-/// \param newCenters
-void ComputeError(float& E, int K, std::vector<Superpixel> Superpixels, std::vector<std::vector<int>> newCenters) {
-    for(int k = 0; k < K; k++) {
+/// \param centers
+float ComputeError(int K, const std::vector<Superpixel>& sp,
+                  const std::vector<std::vector<int>>& centers) {
+    float E=0;
+    for(int k=0; k<K; k++)
         // Computing the squared euclidian distance between the previous positions of the centers and the new positions of the centers
         // Maybe we could improve the algorithm wy choosing another distance for error computation ?
-        E += (newCenters[k][0] - Superpixels[k].get_x()) * (newCenters[k][0] - Superpixels[k].get_x())
-                + (newCenters[k][1] - Superpixels[k].get_y()) * (newCenters[k][1] - Superpixels[k].get_y());
-    }
+        E += (centers[k][0]-sp[k].get_x())*(centers[k][0]-sp[k].get_x()) +
+             (centers[k][1]-sp[k].get_y())*(centers[k][1]-sp[k].get_y());
+    return E;
 }
 
 ////////////////////////
-/// \brief Does the final process of the update step, i. e. moving the Superpixel centers to their new positions, still stocked in newCenters
+/// \brief Does the final process of the update step, i. e. moving the Superpixel centers to their new positions, still stocked in centers
 /// \param Superpixels
-/// \param newCenters
+/// \param centers
 /// \param K
-void MoveCenters(std::vector<Superpixel>& Superpixels, std::vector<std::vector<int>> newCenters, int K) {
+void MoveCenters(std::vector<Superpixel>& Superpixels,
+                 const std::vector<std::vector<int>>& centers, int K) {
     // Moving the barycenters to their new positions
-    for(int k = 0; k < K; k++) {
+    for(int k=0; k<K; k++) {
         // Updating the values of the Superpixels
-        Superpixels[k].set_x(newCenters[k][0]);
-        Superpixels[k].set_y(newCenters[k][1]);
-        Superpixels[k].set_color(Imagine::Color(newCenters[k][2], newCenters[k][3], newCenters[k][4]));
-        Superpixels[k].set_size(newCenters[k][5]);
+        Superpixels[k].set_x(centers[k][0]);
+        Superpixels[k].set_y(centers[k][1]);
+        Imagine::Color col(centers[k][2], centers[k][3], centers[k][4]);
+        Superpixels[k].set_color(col);
+        Superpixels[k].set_size(centers[k][5]);
     }
 }
-
-void InitStatusCheck(int S, int K, int w, int h, std::vector<Superpixel> Superpixels) {
-    // Status check (test version)
-    std::cout << "S = " << S << std::endl;
-    // cout the initial size of the Superpixels
-    std::cout << "Actual K = " << K << std::endl;
-    // cout the updated K, which is the total number of Superpixels
-    std::cout << "w/S = " << w/S << std::endl;
-    // I can't remember why I prompted this one
-    std::cout << "h/S = " << h/S << std::endl;
-    // This one neither
-    std::cout << "Superpixel vector size : " << Superpixels.size() << std::endl;
-    // Size of the vector Superpixels (to check if it is of size K)
-    std::cout << "Click to start..." << std::endl;
-    Imagine::anyClick();
-    std::cout << "Starting SLIC..." << std::endl;
-
-}
-
-// ----------------------------------------------- CHECKERS AND TESTS (Test version) // END ----------------------------------------------- //
 
 /////////////////////////
 /// \brief A basic depth-search connected components algorithm.
@@ -608,11 +581,8 @@ void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name) {
     }
 }
 
-std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img, Imagine::Image<int>& l, int m, int K) {
-
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                                 Initialization                                  ////
-    //// ------------------------------------- </> ------------------------------------- ////
+std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
+                             Imagine::Image<int>& l, int m, int K) {
 
     // Chronometer for test version
     auto time_before_SLICLoops = std::chrono::high_resolution_clock::now();
@@ -622,7 +592,7 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img, Imagine:
     const int w=Img.width(), h=Img.height();
 
     std::vector<Superpixel> Superpixels;    // A vector that will contain all the Superpixels
-    Imagine::Image<float> d(w, h);  // d(i, j) will be the distance from Img(i, j) to its Superparent Superpixels[l(i, j)]
+    Imagine::Image<float> d(w,h);  // d(i, j) will be the distance from Img(i, j) to its Superparent Superpixels[l(i, j)]
     int S;  // S will the size of the grid step
 
     // InitSuperpixels initializes l, d, S and Superpixels
@@ -631,11 +601,11 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img, Imagine:
 //    // The minimal gradient initialization doesn't seem to make a difference
 //    InitMinGradient(K, Superpixels, Img, 10);
 
-    // newCenters will be useful for the update step, as it will contain the new positions of the Superpixels,
+    // centers will be useful for the update step, as it will contain the new positions of the Superpixels,
     // allowing computation of the error (see UpdateStep)
-    // /!\ newCenters MUST be initialized after the grid because K is modified by InitGrid
+    // /!\ centers MUST be initialized after the grid because K is modified by InitGrid
     std::vector<int> il = {0, 0, 0, 0, 0, 0};
-    std::vector<std::vector<int>> newCenters(K, il);
+    std::vector<std::vector<int>> centers(K, il);
 
     // Initialization of the error which will determine the termination of the algorithm (cf. article)
     float E = 0.;
@@ -643,44 +613,16 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img, Imagine:
     // Loop counter to count the loops
     int loopCounter = 0;
 
-    //// ------------------------------------- </> ------------------------------------- ////
-    ////                                    Main loop                                    ////
-    //// ------------------------------------- </> ------------------------------------- ////
-
+    // Main loop
     do {
-        // Reinitialize the error (to hopefully make it converge)
-        E = 0.;
-
-        // Increment the loop counter
         loopCounter += 1;
-
-        /// ----------------- /// ----------------- ///
-        ///             Assignment step             ///
-        /// ----------------- /// ----------------- ///
-
         AssignmentStep(Superpixels, Img, K, m, S, l, d);
+        UpdateStep(centers, K, l, Img);
+        // Now centers contains the position and color coordinates of the new barycenters, and the sizes of the corresponding Superpixel
 
-        /// ----------------- /// ----------------- ///
-        ///               Update step               ///
-        /// ----------------- /// ----------------- ///
-
-        UpdateStep(newCenters, K, l, Img);
-        // Now newCenters contains the position and color coordinates of the new barycenters, and the sizes of the corresponding Superpixel
-
-        /// ----------------- /// ----------------- ///
-        ///            Error Computation            ///
-        /// ----------------- /// ----------------- ///
-
-        ComputeError(E, K, Superpixels, newCenters);    // /!\ It is important to compute the error before re-affecting the barycenters (otherwise you'll get 0)
-
-        /// ----------------- /// ----------------- ///
-        ///         Moving the barycenters          ///
-        /// ----------------- /// ----------------- ///
-
-        MoveCenters(Superpixels, newCenters, K);
-
+        E = ComputeError(K, Superpixels, centers);
+        MoveCenters(Superpixels, centers, K);
 //        std::cout << "Error : " << E << " at loop " << loopCounter << std::endl;;
-
     } while(E > 0);
     // The stop condition is E <= 0 : since E is an integer and converges towards zero, this condition always makes the algorithm end
 
@@ -689,9 +631,6 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img, Imagine:
 
     std::chrono::duration<double> elapsed_time_SLICLoops = (time_after_SLICLoops - time_before_SLICLoops);
     std::cout << "Elapsed time for SLIC init and loops: " << elapsed_time_SLICLoops.count() << std::endl;
-
-    // Status check (test version)
-    std::cout << "Main loop ended" << std::endl;
 
     return Superpixels;
 }
