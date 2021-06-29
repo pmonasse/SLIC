@@ -10,6 +10,32 @@
 
 #include "SLICTools.h"
 
+Imagine::Image<Imagine::Color> LoadImage(const char* img) {
+    // Loading the image
+    // Test to ensure the image has been loaded
+    Imagine::Image<Imagine::Color> Img;
+    if(!Imagine::load(Img, img)) {
+        std::cout << "Image loading error!" << std::endl;
+        Imagine::anyClick();
+    }
+
+    return Img;
+}
+
+void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name) {
+    if(! Imagine::save(img, name)) {
+        std::cerr << "Failed saving image " << name << std::endl;
+        throw "Error saving image";
+    }
+}
+
+/// Putting Image Img in Window W, subwindow subwin
+void DisplayImage(const Imagine::Image<Imagine::Color>& Img,
+                  Imagine::Window W, int subwin) {
+    Imagine::setActiveWindow(W, subwin);
+    display(Img);
+}
+
 void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
                            Imagine::Image<Imagine::Color>& ImgDestination,
                            int m, int K,

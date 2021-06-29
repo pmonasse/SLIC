@@ -5,11 +5,6 @@
 
 #include "superpixel.h"
 
-Imagine::Image<Imagine::Color> LoadImage(const char* name);
-void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name);
-
-void DisplayImage(const Imagine::Image<Imagine::Color>& Img, Imagine::Window W, int subwin);
-
 //////////////////////////////////
 /// \brief Ensures that the Superpixels are connected
 /// \param K

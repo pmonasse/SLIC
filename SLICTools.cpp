@@ -73,27 +73,6 @@ int color_dist(Imagine::Color col1, Imagine::Color col2) {
 ////                                  Main functions                                 ////
 //// ------------------------------------- </> ------------------------------------- ////
 
-Imagine::Image<Imagine::Color> LoadImage(const char* img) {
-    // Loading the image
-    // Test to ensure the image has been loaded
-    Imagine::Image<Imagine::Color> Img;
-    if(!Imagine::load(Img, img)) {
-        std::cout << "Image loading error!" << std::endl;
-        Imagine::anyClick();
-    }
-
-    return Img;
-}
-
-void DisplayImage(const Imagine::Image<Imagine::Color>& Img, Imagine::Window W, int subwin) {
-
-    // Putting Image Img in Window W, subwindow subwin
-    Imagine::setActiveWindow(W, subwin);
-    display(Img);
-    //    Imagine::putColorImage(0, 0, Img.data(), Img.width(), Img.height());
-
-}
-
 /////////////////
 /// \brief Initializes l and d (cf. article), recalculates K to adapt it to the image Img, computes the distance S
 /// \param l
@@ -574,13 +553,6 @@ void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixel
     std::cin >> displaySuperpixels;
 }
 
-void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name) {
-    if(! Imagine::save(img, name)) {
-        std::cerr << "Failed saving image " << name << std::endl;
-        throw "Error saving image";
-    }
-}
-
 std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
                              Imagine::Image<int>& l, int m, int K) {
 
@@ -607,10 +579,7 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
     std::vector<int> il = {0, 0, 0, 0, 0, 0};
     std::vector<std::vector<int>> centers(K, il);
 
-    // Initialization of the error which will determine the termination of the algorithm (cf. article)
     float E = 0.;
-
-    // Loop counter to count the loops
     int loopCounter = 0;
 
     // Main loop
