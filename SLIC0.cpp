@@ -9,6 +9,44 @@
 //// ---------------------------------------------------------------------------------------------------------- ////
 
 #include "SLICTools.h"
+#include <iostream>
+
+void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixels) {
+    // Inputs
+    std::cout << "Number of Superpixels: ";
+    std::cin >> K;
+    std::cout << "Compactness parameter (>=1): ";
+    std::cin >> m;
+    std::cout << "Display borders? ";
+    std::cin >> displayBorders;
+    std::cout << "Display Superpixels? ";
+    std::cin >> displaySuperpixels;
+}
+
+void MakeSLICImage(bool superpixels, bool borders,
+                   Imagine::Image<Imagine::Color>& ImgDestination,
+                   const Imagine::Image<Imagine::Color>& Img,
+                   const Imagine::Image<int>& l,
+                   const std::vector<Superpixel>& Superpixels) {
+    const int w=Img.width(), h=Img.height();
+    assert(ImgDestination.width() == w && ImgDestination.height() == h);
+
+    // Replacing the color of each pixel by its Superparent's color
+    if(superpixels)
+        for(int j=0; j<h; j++)
+            for(int i=0; i<w; i++)
+                ImgDestination(i,j) = Superpixels[l(i,j)].get_color();
+
+    // Drawing the borders between the Superpixels
+    if(borders)
+        for(int j=0; j<h; j++)
+            for(int i=0; i<w; i++) {
+                Imagine::Coords<2> n1(i+1,j), n2(i,j+1);
+                if((is_in(n1,Img) && l(n1)!=l(i,j)) ||
+                   (is_in(n2,Img) && l(n2)!=l(i,j)))
+                    ImgDestination(i,j) = Imagine::WHITE;
+            }
+}
 
 Imagine::Image<Imagine::Color> LoadImage(const char* img) {
     // Loading the image

@@ -5,50 +5,13 @@
 
 #include "superpixel.h"
 
-//////////////////////////////////
-/// \brief Ensures that the Superpixels are connected
-/// \param K
-/// \param w
-/// \param h
-/// \param l
-/// \param Superpixels
-/// \param Img
-void ConnectivityEnforcement(int K, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img);
+bool is_in(const Imagine::Coords<2>&, const Imagine::Image<Imagine::Color>&);
 
-////////////////////////////
-/// \brief Fills ImgDestination with a SLICed image, according to user preferences
-/// \param superpixels
-/// \param borders
-/// \param ImgDestination
-/// \param Img
-/// \param w
-/// \param h
-/// \param l
-/// \param Superpixels
-void MakeSLICImage(bool superpixels, bool borders,
-                   Imagine::Image<Imagine::Color>& ImgDestination,
-                   const Imagine::Image<Imagine::Color>& Img,
-                   const Imagine::Image<int>& l,
-                   const std::vector<Superpixel>& Superpixels);
-
-///////////////////////////
-/// \brief Gets the compactness param (m), the number of Superpixels desired (K), whether to show the
-/// Superpixel borders (displayBorders) and wh. to show the Superpixels (displaySuperpixels)
-/// \param m
-/// \param K
-/// \param displayBorders
-/// \param displaySuperpixels
-void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixels);
-
-
-///////////////////
-/// \brief The SLIC algorithm
-/// \param Img
-/// \param m
-/// \param K
-/// \param l : l(i, j) will be the index of Img(i, j)'s Superparent in returned vector
-/// \return A std::vector containing the Superpixels that segment the image
+/// The SLIC algorithm
 std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
                              Imagine::Image<int>& l, int m, int K);
+
+/// Ensure that the Superpixels are connected
+void ConnectivityEnforcement(int K, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img);
 
 #endif // SLICTOOLS_H
