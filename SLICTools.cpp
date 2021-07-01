@@ -69,13 +69,8 @@ void InitGrid(std::vector<Superpixel>& Superpixels,
               int& K, int& S,
               const Imagine::Image<Imagine::Color>& Img) {
     const int w=Img.width(), h=Img.height();
-    S = int(sqrt((w*h)/K));
+    S = (int) sqrt(w*h/(double)K);
     // The initial size of the Superpixels (cf. article)
-
-    // Update of K so that the number of Superpixels stored is the actual number, not the one required by the user
-    // (because bc of the image dimensions, the exact number required is almost never reached with a regular grid)
-    int newK = (w/S) * (h/S);
-    K = newK;
 
     // Initialization of d and l (cf. article)
     for(int i=0; i<w; i++) {
@@ -87,14 +82,16 @@ void InitGrid(std::vector<Superpixel>& Superpixels,
 
     // These two int are the difference bewteen the width (resp. height) of the Image and the width (resp. height) of the grid
     // They will help center the grid to avoid missing pixels
-    const int padw = w - S*(w/S), padh = h - S*(h/S), s=S/2;
+    const int nx = std::max(1,w/S), ny = std::max(1,h/S);
+    const int padw = std::max(0,w-S*nx), padh = std::max(0,h-S*ny), s=S/2;
     // Initialization of the superpixels with the color of their center
-    for(int j=0; j*S<h; j++)
-        for(int i=0; i*S<w; i++) {
+    for(int j=0; j<ny; j++)
+        for(int i=0; i<nx; i++) {
             int ii=i*S+s+padw/2, jj=j*S+s+padh/2;
             if(is_in(ii,jj,Img))
                 Superpixels.push_back(Superpixel(ii, jj, Img(ii,jj), 0));
         }
+    K = (int)Superpixels.size();
 }
 
 //////////////////
