@@ -3,24 +3,6 @@
 #include <queue>
 #include <chrono>
 
-//// ------------------------------------- </> ------------------------------------- ////
-////                                 Useful functions                                ////
-//// ------------------------------------- </> ------------------------------------- ////
-
-////////////////
-/// \brief If is_in == true, coordinates of pix are in the Image img
-/// \param pix
-/// \param img
-/// \return in
-bool is_in(const Imagine::Coords<2>& p, const Imagine::Image<Imagine::Color>& I)
-{ return (0<=p.x() && p.x()<I.width() && 0<=p.y() && p.y() < I.height()); }
-
-////////////////
-/// \brief If is_in == true, pixel (i, j) is in img
-/// \param i
-/// \param j
-/// \param img
-/// \return in
 bool is_in(int i, int j, Imagine::Image<Imagine::Color> img) {
     return(is_in(Imagine::Coords<2>(i, j), img));
 }
@@ -319,58 +301,39 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
     return Superpixels;
 }
 
-/////////////////////////
-/// \brief A basic depth-search connected components algorithm.
-/// NB: Connected components in the sense of the affiliation to Superpixels, given by l \n
-/// NB: max_label is redirected to the "maximum of the labels", which is ///THE NUMBER OF LABELS +1///
-/// \param ConnectedComponents
-/// \param max_label
-/// \param l
-/// \param h
-/// \param w
-/// \param Img
-void ConnectedComponentsAlgorithm(Imagine::Image<int> ConnectedComponents, int& max_label, std::vector<int>& compSizes, Imagine::Image<int> l, int h, int w, Imagine::Image<Imagine::Color> Img) {
-
-    std::stack<Imagine::Coords<2>> pile;
-    // The stack used in the connected components algorithm
-
-    int label = 0;
-
-    for(int i = 0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
-
-            if(ConnectedComponents(i, j) == -1) {
-                ConnectedComponents(i, j) = label;
-                pile.push(Imagine::Coords<2>(i, j));
-
-                compSizes.push_back(1);
-
-                while(!pile.empty()) {
-
-//                    // Status check (test version)
-//                    std::cout << "Pile size : " << pile.size() << std::endl;
-
-                    Imagine::Coords<2> pix = pile.top();
-                    pile.pop();
-
-                    // Testing if the 4 neighbours of Img(pix) are in Img(pix)'s connected component
-                    for(int n = 0; n < 4; n++) {
-                        Imagine::Coords<2> nei = neighbor(pix, n);
-                        if(is_in(nei, Img)) {
-                            if(l(nei) == l(i, j) && ConnectedComponents(nei) == -1) {
-                                ConnectedComponents(nei) = ConnectedComponents(pix);
-                                pile.push(nei);
-
-                                compSizes[ConnectedComponents(i, j)] += 1;
-                            }
-                        }
+/// Connected components labelling algorithm.
+/// \param[out] cc Pixels get label of their connected component.
+/// \param[out] compSizes For each label of cc, its number of pixels.
+/// \param[in] l Image whose cc of isolevels must be extracted.
+void labelCC(Imagine::Image<int>& cc, std::vector<int>& compSizes,
+             const Imagine::Image<int>& l) {
+    cc.fill(-1);
+    std::stack< Imagine::Coords<2> > S;
+    const int w=l.width(), h=l.height();
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++) {
+            if(cc(i,j) != -1)
+                continue;
+            S.push(Imagine::Coords<2>(i,j));
+            int label=l(i,j);
+            int labelcc = static_cast<int>(compSizes.size());
+            cc(i,j)=labelcc;
+            compSizes.push_back(0);
+            while(! S.empty()) {
+                ++compSizes.back();
+                Imagine::Coords<2> p = S.top();
+                S.pop();
+                for(int n=0; n<4; n++) { // Testing neighbors
+                    Imagine::Coords<2> q = neighbor(p,n);
+                    if(is_in(q,l) && cc(q)==-1 && l(q)==label) {
+                        S.push(q);
+                        cc(q) = labelcc;
                     }
                 }
-                label += 1;
             }
+            //            std::cout << compSizes.back() << ' ' << std::flush;
         }
-    }
-    max_label = label;
+    //    std::cout << std::endl;
 }
 
 ////////////////////////////
@@ -540,26 +503,18 @@ void ReassignPixels(std::vector<Superpixel> Superpixels, Imagine::Image<int> l, 
 }
 
 void ConnectivityEnforcement(int K, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img) {
+    Imagine::Image<int> cc(w,h); // Labels of connected components
+    std::vector<int> compSizes; // Sizes of the cc
 
-    Imagine::Image<int> ConnectedComponents(w, h);
-    // This Image will contain for each pixel, which connected component it is in
-    for(int i = 0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
-            ConnectedComponents(i, j) = -1;
-        }
-    }
+    auto t0 = std::chrono::high_resolution_clock::now();
+    labelCC(cc, compSizes, l);
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::cout << "Time labelCC: " << std::chrono::duration<double>(t1-t0).count() << std::endl;
 
-    // This int will be the number of labels (+1 since numbering starts at 0)
-    int label_num;
-    // compSizes will be filled with the sizes of the components by the ConnectedComponentsAlgorithm function
-    std::vector<int> compSizes;
+    KeepOnlyMaxSizesComponents(compSizes, cc, l, K, w, h);
 
-    ConnectedComponentsAlgorithm(ConnectedComponents, label_num, compSizes, l, h, w, Img);
-
-    KeepOnlyMaxSizesComponents(compSizes, ConnectedComponents, l, K, w, h);
-
-//        // Recomputing the Superpixel colors taking into account only the biggest connected component (necessary ? NO)
-//        RecomputeSuperpixelColors(Superpixels, K, ConnectedComponents, compSizes, l, w, h, Img);
+    // Recomputing the Superpixel colors taking into account only the biggest connected component (necessary ? NO)
+    // RecomputeSuperpixelColors(Superpixels, K, cc, compSizes, l, w, h, Img);
 
     // Reassigning the orphan pixels to the nearest connected Superpixel
     ReassignPixels(Superpixels, l, w, h, Img);

@@ -5,7 +5,10 @@
 
 #include "superpixel.h"
 
-bool is_in(const Imagine::Coords<2>&, const Imagine::Image<Imagine::Color>&);
+/// Are coordinates in the image?
+template <typename T>
+bool is_in(const Imagine::Coords<2>& p, const Imagine::Image<T>& I)
+{ return (0<=p.x() && p.x()<I.width() && 0<=p.y() && p.y() < I.height()); }
 
 /// The SLIC algorithm
 std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
