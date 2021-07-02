@@ -343,7 +343,8 @@ void labelCC(Imagine::Image<int>& cc, std::vector<int>& compSizes,
 /// \param h Height of image
 void discardMinorCC(Imagine::Image<int>& cc,
                     const std::vector<int>& compSizes,
-                    Imagine::Image<int>& l, int K, int w, int h) {
+                    Imagine::Image<int>& l, int K) {
+    const int w=l.width(), h=l.height();
     std::vector<int> maxSizeCC(K,-1); // superpixel -> label of largest cc
 
     // Fill maxSizeCC
@@ -407,89 +408,58 @@ void RecomputeSuperpixelColors(std::vector<Superpixel> Superpixels, int K, Imagi
 }
 
 ///////////////////////////
-/// \brief Reassigns the orphan pixels to the nearest (in color) Superpixel they are connected to
+/// Assign orphan pixels to nearest (in color) superpixel they are connected to
 /// \param Superpixels
-/// \param l
-/// \param w
-/// \param h
+/// \param[in,out] l
 /// \param Img
-void ReassignPixels(std::vector<Superpixel> Superpixels, Imagine::Image<int> l, int w, int h, Imagine::Image<Imagine::Color> Img) {
+void assignOrphans(const std::vector<Superpixel>& Superpixels,
+                     Imagine::Image<int>& l,
+                     const Imagine::Image<Imagine::Color>& Img) {
+    const int w=l.width(), h=l.height();
 
-    // This queue will contain all the orphan pixels in the Image.
-    // Using a queue allows to memorize which pixels are isolated and thus cannot be immediately reassigned to a Superpixel they are connected to
-    std::queue<Imagine::Coords<2>> queue;
-
-    // Initialization of the queue
-    for(int i = 0; i < w; i++) {
-        for(int j =0; j < h; j++) {
-            if(l(i, j) == -1) {
-                queue.push(Imagine::Coords<2>(i, j));
-            }
-        }
-    }
-
-    // While the queue is not empty, it means that there still are isolated pixels that have not been treated yet
-    while(!queue.empty()) {
-
-        // Going to treat the front pixel of the queue
-        Imagine::Coords<2> pix = queue.front();
-        // Pop the front element
-        queue.pop();
-        // A boolean checking if it is isolated
-        bool isolated = true;
-        // Look at pix's neighbors
-
-        //// Determine the color-nearest Superpixel that is connected to pix
-
-        // Initializing color distance and closest Superpixel index
-        int color_nearest_superpix = -1;
-        int min_color_dist = int(INFINITY);
-
-        for(int n = 0; n < 4; n++) {
-
-            Imagine::Coords<2> nei = neighbor(pix, n);
-
-            // Check if the neighbor is in the Image
-            if(is_in(nei, Img)) {
-
-                // If l(nei) = -1, it means that nei is not in a Superpixel's connected component
-                // Thus, nei is not taken into account
-                if(l(nei) == -1) {
-                    continue;
-                }
-
-                // Else, determine if nei's Superparent is closer in color to pix than the former neighbor treated
-                // (or than infinity)
-                else {
-
-                    // If there is a neighbor belonging to a Superpixel, it means pix is not isolated
-                    isolated = false;
-
-                    // currCD: current color distance
-                    int currCD = color_dist(Img(pix), Superpixels[l(nei)].get_color());
-
-                    // If nei's Superpixel is closer to pix in color than the former neighbor,
-                    // replace the nearest Superpixel with it
-                    if(currCD < min_color_dist) {
-                        min_color_dist = currCD;
-                        color_nearest_superpix = l(nei);
+    std::queue< Imagine::Coords<2> > Q;
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++)
+            if(l(i,j)<0)
+                l(i,j)=std::numeric_limits<int>::min();
+    
+    // Do sucessive dilatations until all orphans are queued
+    for(int dist=-1; true; --dist) {
+        size_t Qsize = Q.size();
+        for(int j=0; j<h; j++)
+            for(int i=0; i<w; i++)
+                if(l(i,j) > dist)
+                    for(int n=0; n<4; n++) { // Testing neighbors
+                        Imagine::Coords<2> q = neighbor(i,j,n);
+                        if(is_in(q,l) && l(q)<dist) {
+                            l(q) = dist;
+                            Q.push(q);
+                        }
                     }
-                }
-            }
-        }
-
-        // If at the end of the treatment of the four neighbors of pix, isolated is still true,
-        // it means that pix is isolated. It is thus put back in the queue to be treated later
-        if(isolated) {
-            queue.push(pix);
-        }
-
-        // Else, reassign pix to the color-closest Superpixel connected to it
-        else {
-            l(pix) = color_nearest_superpix;
-        }
+        if(Qsize == Q.size())
+            break;
+        Qsize = Q.size();
     }
-    // Once the queue is empty, all pixel have been reassigned
+
+    while(! Q.empty()) {
+        Imagine::Coords<2> p = Q.front();
+        Q.pop();
+        int nearest = -1;
+        int minDist = std::numeric_limits<int>::max();
+
+        for(int n=0; n<4; n++) { // Testing neighbors
+            Imagine::Coords<2> q = neighbor(p,n);
+            if(! is_in(q,l) || l(q)<0) continue;
+            // currCD: current color distance
+            int dist = color_dist(Img(p), Superpixels[l(q)].get_color());
+            if(dist < minDist) {
+                minDist = dist;
+                nearest = l(q);
+            }            
+        }
+        assert(nearest>=0);
+        l(p) = nearest;
+    }
 }
 
 void ConnectivityEnforcement(int K, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img) {
@@ -501,11 +471,10 @@ void ConnectivityEnforcement(int K, int w, int h, Imagine::Image<int> l, std::ve
     auto t1 = std::chrono::high_resolution_clock::now();
     std::cout << "Time labelCC: " << std::chrono::duration<double>(t1-t0).count() << std::endl;
 
-    discardMinorCC(cc, compSizes, l, K, w, h);
+    discardMinorCC(cc, compSizes, l, K);
 
     // Recomputing the Superpixel colors taking into account only the biggest connected component (necessary ? NO)
     // RecomputeSuperpixelColors(Superpixels, K, cc, compSizes, l, w, h, Img);
 
-    // Reassigning the orphan pixels to the nearest connected Superpixel
-    ReassignPixels(Superpixels, l, w, h, Img);
+    assignOrphans(Superpixels, l, Img);
 }
