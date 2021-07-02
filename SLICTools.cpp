@@ -248,7 +248,7 @@ void MoveCenters(std::vector<Superpixel>& Superpixels,
 }
 
 std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
-                             Imagine::Image<int>& l, int m, int K) {
+                             Imagine::Image<int>& l, int m, int& K) {
 
     // Chronometer for test version
     auto time_before_SLICLoops = std::chrono::high_resolution_clock::now();
@@ -334,43 +334,36 @@ void labelCC(Imagine::Image<int>& cc, std::vector<int>& compSizes,
 }
 
 ////////////////////////////
-/// \brief Reduces the Superpixels to their largest connected component and discards all other connected components
-/// \param compSizes
-/// \param ConnectedComponents
-/// \param l
-/// \param K
-/// \param w
-/// \param h
-void KeepOnlyMaxSizesComponents(std::vector<int> compSizes, Imagine::Image<int> ConnectedComponents, Imagine::Image<int> l, int K, int w, int h) {
+/// Reduce superpixels to their largest connected component
+/// \param[in,out] cc connected component labels
+/// \param compSizes Size of each cc
+/// \param[in,out] l Labels of superpixels
+/// \param K Number of superpixels (number of values in l)
+/// \param w Width of image
+/// \param h Height of image
+void discardMinorCC(Imagine::Image<int>& cc,
+                    const std::vector<int>& compSizes,
+                    Imagine::Image<int>& l, int K, int w, int h) {
+    std::vector<int> maxSizeCC(K,-1); // superpixel -> label of largest cc
 
-    // maxSizeComponents will contain for each Superpixel k the label of its largest connected subset
-    std::vector<int> maxSizeComponents(K);
+    // Fill maxSizeCC
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++) {
+            int labelcc=cc(i,j);
+            int labelS=l(i,j); // Label of superpixel
+            int& s = maxSizeCC[labelS];
+            if(s<0 || compSizes[s]<compSizes[labelcc])
+                s = labelcc;
+        }
 
-    // 1st step: determine the label of the largest connected component for each Superpixel k
-    // i. e. filling maxSizeComponents
-    for(int k = 0; k < K; k++) {
-        int max_size = -1;
-        int max_label = -1;
-        for(int i = 0; i < w; i++) {
-            for(int j = 0; j < h; j++) {
-                if(l(i, j) == k && compSizes[ConnectedComponents(i, j)] > max_size) {
-                    max_size = compSizes[ConnectedComponents(i, j)];
-                    max_label = ConnectedComponents(i, j);
-                }
+    // Make orphans the minor cc of each superpixel
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++) {
+            if(cc(i,j) != maxSizeCC[l(i,j)]) {
+                cc(i,j) = -1;
+                l(i,j) = -1;
             }
         }
-        maxSizeComponents[k] = max_label;
-    }
-
-    // 2nd step: discard the connected components of the remaining pixels and de-assign them from their Superparent
-    for(int i = 0; i < w; i++) {
-        for(int j = 0; j < h; j++) {
-            if(ConnectedComponents(i, j) != maxSizeComponents[l(i, j)]) {
-                ConnectedComponents(i, j) = -1;
-                l(i, j) = -1;
-            }
-        }
-    }
 }
 
 /////////////////////////
@@ -508,7 +501,7 @@ void ConnectivityEnforcement(int K, int w, int h, Imagine::Image<int> l, std::ve
     auto t1 = std::chrono::high_resolution_clock::now();
     std::cout << "Time labelCC: " << std::chrono::duration<double>(t1-t0).count() << std::endl;
 
-    KeepOnlyMaxSizesComponents(compSizes, cc, l, K, w, h);
+    discardMinorCC(cc, compSizes, l, K, w, h);
 
     // Recomputing the Superpixel colors taking into account only the biggest connected component (necessary ? NO)
     // RecomputeSuperpixelColors(Superpixels, K, cc, compSizes, l, w, h, Img);
