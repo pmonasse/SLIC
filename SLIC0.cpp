@@ -34,7 +34,7 @@ void MakeSLICImage(bool superpixels, bool borders,
     if(superpixels)
         for(int j=0; j<h; j++)
             for(int i=0; i<w; i++)
-                ImgDestination(i,j) = sp[l(i,j)].get_color();
+                ImgDestination(i,j) = l(i,j)>=0? sp[l(i,j)].col: Imagine::WHITE;
 
     // Drawing the borders between the superpixels
     if(borders)
@@ -83,19 +83,7 @@ void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
     std::vector<Superpixel> sp = SLIC(Img, l, m, K);
     enforceConnectivity(sp, l, Img);
 
-    // Haven't determined yet what to return, maybe returning l is enough
-    for(int i=0; i<w; i++) {
-        for(int j=0; j<h; j++) {
-            // This loop fills each Superpixel's _contents vector with the pixels it contains, as indicated by the values in l
-            //
-            // Recall : l(i, j) is an int corresponding to the index of the Superpixel containing Img(i, j) in Superpixels
-            // e. g. : l(i, j) = k means that Img(i, j) belongs to Superpixels[k]
-            sp[l(i, j)].push_contents(Imagine::Coords<2>(i, j));
-        }
-    }
-
     MakeSLICImage(displaySuperpixels, displayBorders, ImgDestination, sp, l);
-    // Maybe it would be better to return l, or even the SLICed image (even if it is saved) ?
 }
 
 int main(int argc, char* argv[]) {
