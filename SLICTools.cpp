@@ -3,85 +3,87 @@
 #include <queue>
 #include <chrono>
 
-bool is_in(int i, int j, Imagine::Image<Imagine::Color> img) {
-    return(is_in(Imagine::Coords<2>(i, j), img));
+bool is_in(int i, int j, const Imagine::Image<Imagine::Color>& img) {
+    return(is_in(Imagine::Coords<2>(i,j), img));
 }
 
-////////////////////
-/// \brief Returns the n-th neighbor (4-conn) of (i, j), starting with right (n = 0) and rotating in trigonometric sense
+/// Return the n-th neighbor (4-conn) of (i,j), starting with right (n=0)
+/// and rotating in trigonometric sense:
 /// i.e. n = 1 -> up neighbor
 ///      n = 2 -> left neighbor
 ///      n = 3 -> down neighbor
-/// \param i
-/// \param j
-/// \param n
-/// \return Imagine::Coords<2> neighbor
+/// \param i Abscissa
+/// \param j Ordinate
+/// \param n Index of neighbor
+/// \return neighbor of pixel (i,j) (beware, may be outside image)
 Imagine::Coords<2> neighbor(int i, int j, int n) {
     assert(n >= 0 && n < 4);
     switch(n) {
-        case 0 :
-            return Imagine::Coords<2>(i + 1, j);
-        case 1 :
-            return Imagine::Coords<2>(i, j - 1);
-        case 2 :
-            return Imagine::Coords<2>(i - 1, j);
-        case 3 :
-            return Imagine::Coords<2>(i, j + 1);
-        default :
-            return Imagine::Coords<2>(i + 1, j);
+        case 0:
+            return Imagine::Coords<2>(i+1, j);
+        case 1:
+            return Imagine::Coords<2>(i, j-1);
+        case 2:
+            return Imagine::Coords<2>(i-1, j);
+        case 3:
+            return Imagine::Coords<2>(i, j+1);
+        default:
+            return Imagine::Coords<2>(i+1, j);
     }
 }
 
-////////////////////
-/// \brief Returns the n-th neighbor of pix, starting with right (n = 0) and rotating in trigonometric sense
-/// \param pix
-/// \param n
-/// \return Imagine::Coords<2> neighbor
-Imagine::Coords<2> neighbor(Imagine::Coords<2> pix, int n) {
-    return neighbor(pix.x(), pix.y(), n);
+/// Return the n-th neighbor of p, starting with right (n=0)
+/// and rotating in trigonometric sense
+/// \param p Pixel
+/// \param n Index of neighbor
+/// \return neighbor of p (beware, may be outside image)
+Imagine::Coords<2> neighbor(Imagine::Coords<2> p, int n) {
+    return neighbor(p.x(), p.y(), n);
 }
 
-/////////////////
-/// \brief Returns the squared euclidian distance between the two colors (R, G, B)
-/// \param col1
-/// \param col2
-/// \return int
-int color_dist(Imagine::Color col1, Imagine::Color col2) {
-    return((col1.r() - col2.r())*(col1.r() - col2.r()) + (col1.g() - col2.g())*(col1.g() - col2.g()) + (col1.b() - col2.b())*(col1.b() - col2.b()));
+inline int sq(int x) { return x*x; }
+
+/// Return the squared Euclidian distance between the two colors.
+/// \param c1
+/// \param c2
+/// \return Squared distance
+int color_dist(Imagine::Color c1, Imagine::Color c2) {
+    return sq(c1.r()-c2.r()) + sq(c1.g()-c2.g()) + sq(c1.b()-c2.b());
 }
 
-//// ------------------------------------- </> ------------------------------------- ////
-////                                  Main functions                                 ////
-//// ------------------------------------- </> ------------------------------------- ////
+/// Square norm of gradient at pixel \a p of color image \a Img.
+/// The sum of the squares of (horizontal and vertical) derivatives of channels.
+int sqNormGradient(const Imagine::Image<Imagine::Color>& Img,
+                   const Imagine::Coords<2>& p) {
+    int g=0;
+    Imagine::Coords<2> q;
+    q = p;
+    ++q.x();
+    if(! is_in(q,Img))
+        q.x() = p.x()-1;
+    if(! is_in(q,Img))
+        q.x() = p.x(); // case w=1
+    g += color_dist(Img(q),Img(p));
 
-/////////////////
-/// \brief Initializes l and d (cf. article), recalculates K to adapt it to the image Img, computes the distance S
-/// \param l
-/// \param d
-/// \param K
-/// \param S
-/// \param w
-/// \param h
-/// \param Img
-/// \return
-void InitGrid(std::vector<Superpixel>& Superpixels,
-              Imagine::Image<int>& l, Imagine::Image<float>& d,
-              int& K, int& S,
-              const Imagine::Image<Imagine::Color>& Img) {
+    q = p;
+    ++q.y();
+    if(! is_in(q,Img))
+        q.y() = p.y()-1;
+    if(! is_in(q,Img))
+        q.y() = p.y(); // case h=1
+    g += color_dist(Img(q),Img(p));
+    return g;
+}
+
+/// Init superpixels. Their number is adjusted according to the image size.
+/// \param[in,out] K Required number of superpixels
+/// \param[out] S Dimension of superpixels
+/// \param Img Input image
+void initSuperpixels(std::vector<Superpixel>& sp, int& K, int& S,
+                     const Imagine::Image<Imagine::Color>& Img) {
     const int w=Img.width(), h=Img.height();
-    S = (int) sqrt(w*h/(double)K);
-    // The initial size of the Superpixels (cf. article)
+    S = (int) sqrt(w*h/(double)K); // Initial size of superpixels
 
-    // Initialization of d and l (cf. article)
-    for(int i=0; i<w; i++) {
-        for(int j=0; j<h; j++) {
-            l(i,j) = -1;
-            d(i,j) = float(INFINITY);
-        }
-    }
-
-    // These two int are the difference bewteen the width (resp. height) of the Image and the width (resp. height) of the grid
-    // They will help center the grid to avoid missing pixels
     const int nx = std::max(1,w/S), ny = std::max(1,h/S);
     const int padw = std::max(0,w-S*nx), padh = std::max(0,h-S*ny), s=S/2;
     // Initialization of the superpixels with the color of their center
@@ -89,82 +91,57 @@ void InitGrid(std::vector<Superpixel>& Superpixels,
         for(int i=0; i<nx; i++) {
             int ii=i*S+s+padw/2, jj=j*S+s+padh/2;
             if(is_in(ii,jj,Img))
-                Superpixels.push_back(Superpixel(ii, jj, Img(ii,jj), 0));
+                sp.push_back(Superpixel(ii, jj, Img(ii,jj), 0));
         }
-    K = (int)Superpixels.size();
+    K = (int)sp.size();
 }
 
-//////////////////
-/// \brief Computes the euclidian norm of a 2-element FVector of Imagine::Color
-/// \param Vect
-/// \return
-int basicNorm(Imagine::FVector<Imagine::Color, 2> Vect) {
-    int a = Vect[0].r()*Vect[0].r() + Vect[0].g()*Vect[0].g() + Vect[0].b()*Vect[0].b();
-    int b = Vect[1].r()*Vect[1].r() + Vect[1].g()*Vect[1].g() + Vect[1].b()*Vect[1].b();
-    return(a + b);
-}
-
-/////////////////////////////
-/// \brief Relocalizes the Superpixel centers in the lowest gradient position in a square of zoneSize by zoneSize pixels around their initial positions
-/// \param K
-/// \param Superpixels
-/// \param Img
-void InitMinGradient(int K, std::vector<Superpixel>& Superpixels, Imagine::Image<Imagine::Color> Img, int zoneSize) {
-
-    for(int k = 0; k < K; k++) {
-
-        // kGrad is the gradient of the current Superpixel center's position
-        Imagine::FVector<Imagine::Color, 2> kGrad = Imagine::gradient(Img, Imagine::Coords<2>(Superpixels[k].get_x(), Superpixels[k].get_y()));
-
-        int minNorm = basicNorm(kGrad);
-        int currX = Superpixels[k].get_x();
-        int currY = Superpixels[k].get_y();
-
-        // For every pixel in a zoneSize x zoneSize surrounding
-        for(int i = -(zoneSize/2); i < zoneSize/2 + 1; i++) {
-            for(int j = -(zoneSize/2); j < zoneSize/2 + 1; j++) {
-
-                Imagine::Coords<2> currPix(currX + i, currY + j);
-
-                // Check if the neighbour is in the Image
-                if(is_in(currPix, Img)) {
-
-                    // currGrad is the gradient in the current neighbor
-                    Imagine::FVector<Imagine::Color, 2> currGrad = gradient(Img, currPix);
-
-                    // If the norm of the gradient of this neighbor is lowest than the lowest so far, replace the lowest by it and move the Superpixel center
-                    if(basicNorm(currGrad) < minNorm) {
-                        Superpixels[k].set_x(currPix.x());
-                        Superpixels[k].set_y(currPix.y());
-                        minNorm = basicNorm(currGrad);
+/// Relocalize superpixel centers to lowest gradient position.
+/// \param sp Superpixels
+/// \param Img Input image
+/// \param radius Radius of max motion
+/// A negative value of radius is a no-op.
+void moveMinGradient(std::vector<Superpixel>& sp,
+                     const Imagine::Image<Imagine::Color>& Img, int radius) {
+    size_t K = sp.size();
+    for(size_t k=0; k<K; k++) {
+        int minNorm = std::numeric_limits<int>::max();
+        const int x=sp[k].get_x(), y=sp[k].get_y();
+        for(int j=-radius; j<=radius; j++)
+            for(int i=-radius; i<=radius; i++) {
+                Imagine::Coords<2> p(x+i,y+j);
+                if(is_in(p, Img)) {
+                    int g = sqNormGradient(Img,p);
+                    if(g < minNorm) {
+                        sp[k].set_x(p.x());
+                        sp[k].set_y(p.y());
+                        minNorm = g;
                     }
                 }
             }
-        }
     }
 }
 
-///////////////////
-/// \brief Does the assignment step according to the article
-/// \param sp
-/// \param Img
-/// \param K
-/// \param m
-/// \param S
-/// \param l
-/// \param d
-void AssignmentStep(const std::vector<Superpixel>& sp,
+/// Assignment step: each pixel is assigned to nearest superpixel
+/// \param sp Superpixels
+/// \param Img Input image
+/// \param m Compactness parameter
+/// \param S Influence radius of superpixels
+/// \param l Index map of superpixel assignment
+/// \param d Distance map in (space,color)
+void assignmentStep(const std::vector<Superpixel>& sp,
                     const Imagine::Image<Imagine::Color>& Img,
-                    int K, int m, int S, Imagine::Image<int>& l,
+                    int m, int S, Imagine::Image<int>& l,
                     Imagine::Image<float>& d) {
+    int K = (int)sp.size();
     for(int k=0; k<K; k++)
         for(int i=-S; i<S; i++)
             for(int j=-S; j<S; j++) {
-                // Looking at the pixels in a 2S x 2S surrounding of the Superpixel sp[k]
+                // Look at pixels in a 2S x 2S surrounding of the superpixel
                 int ip = sp[k].get_x()+i;
                 int jp = sp[k].get_y()+j;
 
-                if(is_in(ip, jp, Img)) {
+                if(is_in(ip,jp, Img)) {
                     Imagine::Color col = Img(ip,jp);
                     float dist = sp[k].howFar(col, ip,jp, m, S);
                     if(d(ip, jp) > dist) {
@@ -175,127 +152,108 @@ void AssignmentStep(const std::vector<Superpixel>& sp,
             }
 }
 
-///////////////////
-/// \brief Does the first part of the update step and returns a K-element vector of 5-element vectors of int, containing for each cluster center
-/// its new color and position coordinates
-/// \param K
-/// \param w
-/// \param h
-/// \param l
-/// \param Img
-/// \return
-void UpdateStep(std::vector<std::vector<int>>& centers, int K,
+/// First part of update step: returns center of each cluster.
+/// \param[out] centers: 6-vector (x,y,r,g,b,n) with n the number of pixels.
+/// \param l Index map of superpixels
+/// \param Img Input image
+void updateStep(std::vector<std::vector<int>>& centers,
                 const Imagine::Image<int>& l,
                 const Imagine::Image<Imagine::Color>& Img) {
-
+    int K = (int)centers.size();
     for(int k=0; k<K; k++)
         for(int l=0; l<6; l++)
             centers[k][l] = 0;
 
-    // A vector containing in this order the future x, y, r, g, b of the new barycenters
-    // and a counter of the number of pixels in the updated Superpixel represented by centers[k]
-
     const int w=Img.width(), h=Img.height();
     for(int j=0; j<h; j++)
         for(int i=0; i<w; i++) {
-            // Adding the values (x, y, r, g, b) of each pixel to its Superparent center's vector in centers
-            int currPix[5] = {i,j, Img(i,j).r(),Img(i,j).g(),Img(i,j).b()};
+            // Adding (x,y,r,g,b) of pixel to its superparent's center
+            int pix[5] = {i,j, Img(i,j).r(),Img(i,j).g(),Img(i,j).b()};
+            std::vector<int>& c = centers[l(i,j)];
             for(int s=0; s<5; s++)
-                centers[l(i,j)][s] += currPix[s];
-            ++centers[l(i,j)][5];
+                c[s] += pix[s];
+            ++c[5];
         }
 
-    // Computing the proper barycenter of the pixels of each Superpixels
-    // by dividing each value by the number of pixels in the Superpixel
+    // Computing barycenters
     for(int k=0; k<K; k++)
         for(int s=0; s<5; s++)
             centers[k][s] /= centers[k][5];
 }
 
-///////////////////
-/// \brief Computes the squared Euclidian distance between the new positions of the superpixels (stocked in centers) and their former positions
-/// \param E
-/// \param K
+/// Squared Euclidian space distance of superpixels' motion
 /// \param Superpixels
 /// \param centers
-float ComputeError(int K, const std::vector<Superpixel>& sp,
-                  const std::vector<std::vector<int>>& centers) {
+float computeError(const std::vector<Superpixel>& sp,
+                   const std::vector<std::vector<int>>& centers) {
     float E=0;
+    size_t K = sp.size();
+    assert(centers.size() == K);
     for(int k=0; k<K; k++)
-        // Computing the squared euclidian distance between the previous positions of the centers and the new positions of the centers
-        // Maybe we could improve the algorithm wy choosing another distance for error computation ?
         E += (centers[k][0]-sp[k].get_x())*(centers[k][0]-sp[k].get_x()) +
              (centers[k][1]-sp[k].get_y())*(centers[k][1]-sp[k].get_y());
     return E;
 }
 
-////////////////////////
-/// \brief Does the final process of the update step, i. e. moving the Superpixel centers to their new positions, still stocked in centers
-/// \param Superpixels
-/// \param centers
-/// \param K
-void MoveCenters(std::vector<Superpixel>& Superpixels,
-                 const std::vector<std::vector<int>>& centers, int K) {
-    // Moving the barycenters to their new positions
+/// Final process of update step: move superpixel centers to their new positions
+/// \param sp Superpixels
+/// \param centers 6-vector (x,y,r,g,b,n) with n the number of pixels
+void moveCenters(std::vector<Superpixel>& sp,
+                 const std::vector<std::vector<int>>& centers) {
+    size_t K = sp.size();
     for(int k=0; k<K; k++) {
-        // Updating the values of the Superpixels
-        Superpixels[k].set_x(centers[k][0]);
-        Superpixels[k].set_y(centers[k][1]);
+        sp[k].set_x(centers[k][0]);
+        sp[k].set_y(centers[k][1]);
         Imagine::Color col(centers[k][2], centers[k][3], centers[k][4]);
-        Superpixels[k].set_color(col);
-        Superpixels[k].set_size(centers[k][5]);
+        sp[k].set_color(col);
+        sp[k].set_size(centers[k][5]);
     }
 }
 
+/// The main SLIC loop.
+/// The number of superpixels is deduced from K and the image dimensions.
+/// \a l is a map giving for each pixel the index of the assigned superpixel.
+/// \param Img The input image
+/// \param[out] l Label map of superpixel index
+/// \param m Compactness parameter
+/// \param K Required number of superpixels
+/// \return Collection of superpixels
 std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
-                             Imagine::Image<int>& l, int m, int& K) {
+                             Imagine::Image<int>& l, int m, int K) {
+    auto t0 = std::chrono::high_resolution_clock::now();
 
-    // Chronometer for test version
-    auto time_before_SLICLoops = std::chrono::high_resolution_clock::now();
-
-    // Status check
-    std::cout << "Computing SLIC..." << std::endl;
     const int w=Img.width(), h=Img.height();
 
-    std::vector<Superpixel> Superpixels;    // A vector that will contain all the Superpixels
-    Imagine::Image<float> d(w,h);  // d(i, j) will be the distance from Img(i, j) to its Superparent Superpixels[l(i, j)]
+    std::vector<Superpixel> sp;
     int S;  // S will the size of the grid step
 
-    // InitSuperpixels initializes l, d, S and Superpixels
-    InitGrid(Superpixels, l, d, K, S, Img);
+    initSuperpixels(sp, K, S, Img);
+    l.fill(-1);
+    Imagine::Image<float> d(w,h);  // distance map to superpixel's color
+    d.fill(float(INFINITY));
 
-//    // The minimal gradient initialization doesn't seem to make a difference
-//    InitMinGradient(K, Superpixels, Img, 10);
+    // The minimal gradient initialization doesn't seem to make a difference
+    moveMinGradient(sp, Img, 5);
 
-    // centers will be useful for the update step, as it will contain the new positions of the Superpixels,
-    // allowing computation of the error (see UpdateStep)
-    // /!\ centers MUST be initialized after the grid because K is modified by InitGrid
     std::vector<int> il = {0, 0, 0, 0, 0, 0};
-    std::vector<std::vector<int>> centers(K, il);
+    std::vector< std::vector<int> > centers(sp.size(), il);
 
-    float E = 0.;
-    int loopCounter = 0;
+    float E = 1.0;
+    std::cout << "Motions:";
+    for(int i=0; E>0; i++) { // Main loop
+        assignmentStep(sp, Img, m, S, l, d);
+        updateStep(centers, l, Img); // Compute new centers of superpixels
+        E = computeError(sp, centers);
+        moveCenters(sp, centers); // Assign new centers to superpixels
+        std::cout << ' ' << E << std::flush;
+    }
+    std::cout << std::endl;
 
-    // Main loop
-    do {
-        loopCounter += 1;
-        AssignmentStep(Superpixels, Img, K, m, S, l, d);
-        UpdateStep(centers, K, l, Img);
-        // Now centers contains the position and color coordinates of the new barycenters, and the sizes of the corresponding Superpixel
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> t = t1-t0;
+    std::cout << "Elapsed time for SLIC: " << t.count() << std::endl;
 
-        E = ComputeError(K, Superpixels, centers);
-        MoveCenters(Superpixels, centers, K);
-//        std::cout << "Error : " << E << " at loop " << loopCounter << std::endl;;
-    } while(E > 0);
-    // The stop condition is E <= 0 : since E is an integer and converges towards zero, this condition always makes the algorithm end
-
-    // Chronometer for test version
-    auto time_after_SLICLoops = std::chrono::high_resolution_clock::now();
-
-    std::chrono::duration<double> elapsed_time_SLICLoops = (time_after_SLICLoops - time_before_SLICLoops);
-    std::cout << "Elapsed time for SLIC init and loops: " << elapsed_time_SLICLoops.count() << std::endl;
-
-    return Superpixels;
+    return sp;
 }
 
 /// Connected components labelling algorithm.
@@ -328,22 +286,19 @@ void labelCC(Imagine::Image<int>& cc, std::vector<int>& compSizes,
                     }
                 }
             }
-            //            std::cout << compSizes.back() << ' ' << std::flush;
+            // std::cout << compSizes.back() << ' ' << std::flush;
         }
-    //    std::cout << std::endl;
+    // std::cout << std::endl;
 }
 
-////////////////////////////
 /// Reduce superpixels to their largest connected component
 /// \param[in,out] cc connected component labels
 /// \param compSizes Size of each cc
 /// \param[in,out] l Labels of superpixels
 /// \param K Number of superpixels (number of values in l)
-/// \param w Width of image
-/// \param h Height of image
 void discardMinorCC(Imagine::Image<int>& cc,
                     const std::vector<int>& compSizes,
-                    Imagine::Image<int>& l, int K) {
+                    Imagine::Image<int>& l, size_t K) {
     const int w=l.width(), h=l.height();
     std::vector<int> maxSizeCC(K,-1); // superpixel -> label of largest cc
 
@@ -407,14 +362,12 @@ void RecomputeSuperpixelColors(std::vector<Superpixel> Superpixels, int K, Imagi
     }
 }
 
-///////////////////////////
 /// Assign orphan pixels to nearest (in color) superpixel they are connected to
-/// \param Superpixels
+/// \param sp The superpixels
 /// \param[in,out] l
 /// \param Img
-void assignOrphans(const std::vector<Superpixel>& Superpixels,
-                     Imagine::Image<int>& l,
-                     const Imagine::Image<Imagine::Color>& Img) {
+void assignOrphans(const std::vector<Superpixel>& sp, Imagine::Image<int>& l,
+                   const Imagine::Image<Imagine::Color>& Img) {
     const int w=l.width(), h=l.height();
 
     std::queue< Imagine::Coords<2> > Q;
@@ -450,8 +403,7 @@ void assignOrphans(const std::vector<Superpixel>& Superpixels,
         for(int n=0; n<4; n++) { // Testing neighbors
             Imagine::Coords<2> q = neighbor(p,n);
             if(! is_in(q,l) || l(q)<0) continue;
-            // currCD: current color distance
-            int dist = color_dist(Img(p), Superpixels[l(q)].get_color());
+            int dist = color_dist(Img(p), sp[l(q)].get_color());
             if(dist < minDist) {
                 minDist = dist;
                 nearest = l(q);
@@ -462,19 +414,26 @@ void assignOrphans(const std::vector<Superpixel>& Superpixels,
     }
 }
 
-void ConnectivityEnforcement(int K, int w, int h, Imagine::Image<int> l, std::vector<Superpixel> Superpixels, Imagine::Image<Imagine::Color> Img) {
-    Imagine::Image<int> cc(w,h); // Labels of connected components
+/// Make superpixels connected by keeping only their major cc.
+/// Pixels of minor cc get assigned to adjacent superpixel with closest color.
+/// \param[in,out] sp The superpixels
+/// \param[in,out] l Labels of superpixels
+/// \param Img Image
+void enforceConnectivity(std::vector<Superpixel>& sp, Imagine::Image<int>& l,
+                         const Imagine::Image<Imagine::Color>& Img) {
+    Imagine::Image<int> cc(l.width(),l.height()); // Labels of cc
     std::vector<int> compSizes; // Sizes of the cc
 
     auto t0 = std::chrono::high_resolution_clock::now();
     labelCC(cc, compSizes, l);
-    auto t1 = std::chrono::high_resolution_clock::now();
-    std::cout << "Time labelCC: " << std::chrono::duration<double>(t1-t0).count() << std::endl;
 
-    discardMinorCC(cc, compSizes, l, K);
+    discardMinorCC(cc, compSizes, l, sp.size());
 
     // Recomputing the Superpixel colors taking into account only the biggest connected component (necessary ? NO)
     // RecomputeSuperpixelColors(Superpixels, K, cc, compSizes, l, w, h, Img);
 
-    assignOrphans(Superpixels, l, Img);
+    assignOrphans(sp, l, Img);
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    std::cout << "Time CC: " << std::chrono::duration<double>(t1-t0).count() << std::endl;
 }

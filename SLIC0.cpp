@@ -25,25 +25,24 @@ void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixel
 
 void MakeSLICImage(bool superpixels, bool borders,
                    Imagine::Image<Imagine::Color>& ImgDestination,
-                   const Imagine::Image<Imagine::Color>& Img,
-                   const Imagine::Image<int>& l,
-                   const std::vector<Superpixel>& Superpixels) {
-    const int w=Img.width(), h=Img.height();
-    assert(ImgDestination.width() == w && ImgDestination.height() == h);
+                   const std::vector<Superpixel>& sp,
+                   const Imagine::Image<int>& l) {
+    const int w=l.width(), h=l.height();
+    assert(ImgDestination.width()==w && ImgDestination.height()==h);
 
     // Replacing the color of each pixel by its Superparent's color
     if(superpixels)
         for(int j=0; j<h; j++)
             for(int i=0; i<w; i++)
-                ImgDestination(i,j) = Superpixels[l(i,j)].get_color();
+                ImgDestination(i,j) = sp[l(i,j)].get_color();
 
-    // Drawing the borders between the Superpixels
+    // Drawing the borders between the superpixels
     if(borders)
         for(int j=0; j<h; j++)
             for(int i=0; i<w; i++) {
                 Imagine::Coords<2> n1(i+1,j), n2(i,j+1);
-                if((is_in(n1,Img) && l(n1)!=l(i,j)) ||
-                   (is_in(n2,Img) && l(n2)!=l(i,j)))
+                if((is_in(n1,l) && l(n1)!=l(i,j)) ||
+                   (is_in(n2,l) && l(n2)!=l(i,j)))
                     ImgDestination(i,j) = Imagine::WHITE;
             }
 }
@@ -79,10 +78,10 @@ void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
                            int m, int K,
                            bool displayBorders, bool displaySuperpixels) {
     const int w=Img.width(), h=Img.height();
-    Imagine::Image<int> l(w, h);
+    Imagine::Image<int> l(w,h);
 
-    std::vector<Superpixel> Superpixels = SLIC(Img, l, m, K);
-    ConnectivityEnforcement(K, w, h, l, Superpixels, Img);
+    std::vector<Superpixel> sp = SLIC(Img, l, m, K);
+    enforceConnectivity(sp, l, Img);
 
     // Haven't determined yet what to return, maybe returning l is enough
     for(int i=0; i<w; i++) {
@@ -91,12 +90,11 @@ void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
             //
             // Recall : l(i, j) is an int corresponding to the index of the Superpixel containing Img(i, j) in Superpixels
             // e. g. : l(i, j) = k means that Img(i, j) belongs to Superpixels[k]
-            Superpixels[l(i, j)].push_contents(Imagine::Coords<2>(i, j));
+            sp[l(i, j)].push_contents(Imagine::Coords<2>(i, j));
         }
     }
 
-    MakeSLICImage(displaySuperpixels, displayBorders, ImgDestination, Img,
-                  l, Superpixels);
+    MakeSLICImage(displaySuperpixels, displayBorders, ImgDestination, sp, l);
     // Maybe it would be better to return l, or even the SLICed image (even if it is saved) ?
 }
 
