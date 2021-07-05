@@ -4,6 +4,7 @@
 #include <Imagine/Images.h>
 
 #include "superpixel.h"
+#include <set>
 
 /// Are coordinates in the image?
 template <typename T>
@@ -17,5 +18,13 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
 /// Ensure that the Superpixels are connected
 void enforceConnectivity(std::vector<Superpixel>& sp, Imagine::Image<int>& l,
                          const Imagine::Image<Imagine::Color>& Img);
+
+/// Fill set of pixels for each superpixel.
+Imagine::Coords<2>* fillSuperpixels(std::vector<Superpixel>& sp,
+                                    const Imagine::Image<int>& l);
+
+/// Compute the (compressed) adjacency matrix of superpixels.
+void adjacencySuperpixels(const Imagine::Image<int>& l,
+                          std::vector< std::set<int> >& adjMatrix);
 
 #endif // SLICTOOLS_H

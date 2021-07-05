@@ -84,6 +84,14 @@ void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
     enforceConnectivity(sp, l, Img);
 
     MakeSLICImage(displaySuperpixels, displayBorders, ImgDestination, sp, l);
+
+    // The following calls are unused here. They are just included to
+    // demonstrate their usage.
+    Imagine::Coords<2>* pixels = fillSuperpixels(sp, l);
+    delete [] pixels;
+
+    std::vector< std::set<int> > adjMatrix;
+    adjacencySuperpixels(l, adjMatrix);
 }
 
 int main(int argc, char* argv[]) {

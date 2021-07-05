@@ -1,4 +1,5 @@
 #include "SLICTools.h"
+#include <algorithm>
 #include <stack>
 #include <queue>
 #include <chrono>
@@ -429,4 +430,65 @@ void enforceConnectivity(std::vector<Superpixel>& sp, Imagine::Image<int>& l,
 
     auto t1 = std::chrono::high_resolution_clock::now();
     std::cout << "Time CC: " << std::chrono::duration<double>(t1-t0).count() << std::endl;
+}
+
+/// Functor to compare pixel coordinates according to their superpixel.
+/// Used to sort pixels in \c fillSuperpixels.
+struct CompareLabels {
+    const Imagine::Image<int>* l;
+    bool operator()(const Imagine::Coords<2>& c1,
+                    const Imagine::Coords<2>& c2) const {
+        return (*l)(c1) < (*l)(c2);
+    }
+};
+
+/// Return an allocated array of pixel coordinates. Each superpixel has a
+/// pointer \c pix to its first pixel inside this array, its field \c size
+/// indicates the number of consecutive pixels.
+Imagine::Coords<2>* fillSuperpixels(std::vector<Superpixel>& sp,
+                                    const Imagine::Image<int>& l){
+    const int w=l.width(), h=l.height();
+    Imagine::Coords<2>* c = new Imagine::Coords<2>[w*h];
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++)
+            c[j*w+i] = Imagine::Coords<2>(i,j);
+    CompareLabels cmp;
+    cmp.l = &l;
+    std::sort(c, c+w*h, cmp);
+
+    for(int i=0; i<w*h;) {
+        Imagine::Coords<2> k=c[i];
+        int j=i+1; // Find range of pixels with same superpixel
+        while(j<w*h && !cmp(k,c[j]))
+            j++;
+        if(l(k)>=0) { // Should always be satisfied if connectivity enforced
+            sp[l(k)].size = j-i;
+            sp[l(k)].pix = &c[i];
+        }
+        i=j;
+    }
+    return c;
+}
+
+/// Compute the (compressed) adjacency matrix of superpixels.
+/// adjMatrix[k] indicates the index of superpixels adjacent to superpixel k.
+/// 4-connectivity is used.
+void adjacencySuperpixels(const Imagine::Image<int>& l,
+                          std::vector< std::set<int> >& adjMatrix) {
+    const int w=l.width(), h=l.height();
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++)
+            if(l(i,j)>=0)
+                for(int n=0; n<2; n++) { // Testing neighbors
+                    Imagine::Coords<2> q = neighbor(i,j,n);
+                    if(is_in(q,l) && l(q)>=0) {
+                        int k1=l(i,j), k2=l(q);
+                        int M = std::max(k1,k2)+1;
+                        if(adjMatrix.size() < M) // Make sure indices exist
+                            adjMatrix.insert(adjMatrix.end(),M-adjMatrix.size(),
+                                             std::set<int>());
+                        adjMatrix[k1].insert(k2);
+                        adjMatrix[k2].insert(k1);
+                    }
+                }
 }
