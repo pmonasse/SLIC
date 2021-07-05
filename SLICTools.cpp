@@ -232,7 +232,6 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
     Imagine::Image<float> d(w,h);  // distance map to superpixel's color
     d.fill(float(INFINITY));
 
-    // The minimal gradient initialization doesn't seem to make a difference
     moveMinGradient(sp, Img, 5);
 
     std::vector<int> il = {0, 0, 0, 0, 0, 0};
@@ -322,44 +321,37 @@ void discardMinorCC(Imagine::Image<int>& cc,
         }
 }
 
-/////////////////////////
-/// \brief Recomputes the color of the Superpixels as the barycenter of the color of their affiliated pixels
-/// /!\ It is assumed that ConnectedComponents already contains only the biggest connected component of each Superpixel,
-/// along with orphan pixels (ConnectedComponents(i, j) = -1)
-/// \param Superpixels
-/// \param K
-/// \param ConnectedComponents
-/// \param compSizes
-/// \param l
-/// \param w
-/// \param h
-/// \param Img
-void RecomputeSuperpixelColors(std::vector<Superpixel> Superpixels, int K, Imagine::Image<int> ConnectedComponents, std::vector<int> compSizes, Imagine::Image<int> l, int w, int h, Imagine::Image<Imagine::Color> Img) {
+/// Recompute the color of the superpixels.
+/// \param sp Superpixels
+/// \param l Index map of superpixels
+/// \param Img Input image
+void computeSuperpixelColors(std::vector<Superpixel>& sp,
+                             const Imagine::Image<int>& l,
+                             const Imagine::Image<Imagine::Color>& Img) {
+    size_t K = sp.size();
+    Imagine::Image<int> col(K,4); // (R,G,B,count)
+    col.fill(0);
 
-    // newColors will contain the new colors
-    Imagine::Image<float> newColors(K, 3);
-    for(int k = 0; k < K; k++) {
-        for(int s = 0; s < 3; s++) {
-            newColors(k, s) = 0;
-        }
-    }
-
-    // Update newColors by adding the colors of the pixels contained in a Superpixel, divided by the new size of this Superpixel
-    // i. e. the size of its biggest connected component
-    for(int i = 0; i < w; i ++) {
-        for(int j = 0; j < h; j++) {
-            if(ConnectedComponents(i, j) != -1) {
-                newColors(l(i, j), 0) += float(Img(i, j).r())/float(compSizes[ConnectedComponents(i, j)]);
-                newColors(l(i, j), 1) += float(Img(i, j).g())/float(compSizes[ConnectedComponents(i, j)]);
-                newColors(l(i, j), 2) += float(Img(i, j).b())/float(compSizes[ConnectedComponents(i, j)]);
+    const int w=l.width(), h=l.height();
+    for(int j=0; j<h; j++)
+        for(int i=0; i<w; i++) {
+            int k = l(i,j);
+            if(k>=0) {
+                Imagine::Color c = Img(i,j);
+                col(k,0) += c.r();
+                col(k,1) += c.g();
+                col(k,2) += c.b();
+                col(k,3)++;
             }
         }
-    }
 
-    // Update the Superpixels with their new color
-    for(int k = 0; k < K; k++) {
-        Superpixels[k].set_color(Imagine::Color(int(newColors(k, 0)), int(newColors(k, 1)), int(newColors(k, 2))));
-    }
+    for(int k=0; k<K; k++)
+        if(col(k,3) > 0) {
+            Imagine::Color c(col(k,0)/col(k,3),
+                             col(k,1)/col(k,3),
+                             col(k,2)/col(k,3));
+            sp[k].set_color(c);
+        }
 }
 
 /// Assign orphan pixels to nearest (in color) superpixel they are connected to
@@ -429,8 +421,7 @@ void enforceConnectivity(std::vector<Superpixel>& sp, Imagine::Image<int>& l,
 
     discardMinorCC(cc, compSizes, l, sp.size());
 
-    // Recomputing the Superpixel colors taking into account only the biggest connected component (necessary ? NO)
-    // RecomputeSuperpixelColors(Superpixels, K, cc, compSizes, l, w, h, Img);
+    computeSuperpixelColors(sp, l, Img);
 
     assignOrphans(sp, l, Img);
 
