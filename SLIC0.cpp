@@ -1,12 +1,24 @@
-//// ---------------------------------------------------------------------------------------------------------- ////
-// PIR - Superpixels (Atelier de Programmation with Pascal Monasse)                                              ///
-// 22/05/2021 update by Robin GAY                                                                                ///
-//                                                                                                               ///
-// ----------------------                                                                                        ///
-/// [Update details]                                                                                             ///
-/// - First working version resulting into ACTUAL (connex) Superpixels                                           ///
-///                                                                                                              ///
-//// ---------------------------------------------------------------------------------------------------------- ////
+/**
+ * SPDX-License-Identifier: GPL-2.0+
+ * @file SLIC0.cpp
+ * @brief input/output for SLIC algorithm
+ *
+ * Copyright (c) 2021 Robin Gay, Pascal Monasse
+ * All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "SLICTools.h"
 #include <iostream>
@@ -23,10 +35,11 @@ void GetSLICInputs(float& m, int& K, bool& displayBorders, bool& displaySuperpix
     std::cin >> displaySuperpixels;
 }
 
-void MakeSLICImage(bool superpixels, bool borders,
-                   Imagine::Image<Imagine::Color>& ImgDestination,
-                   const std::vector<Superpixel>& sp,
-                   const Imagine::Image<int>& l) {
+/// Generate output image
+void slic_output(bool superpixels, bool borders,
+                 Imagine::Image<Imagine::Color>& ImgDestination,
+                 const std::vector<Superpixel>& sp,
+                 const Imagine::Image<int>& l) {
     const int w=l.width(), h=l.height();
     assert(ImgDestination.width()==w && ImgDestination.height()==h);
 
@@ -73,17 +86,18 @@ void DisplayImage(const Imagine::Image<Imagine::Color>& Img,
     display(Img);
 }
 
-void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
-                           Imagine::Image<Imagine::Color>& ImgDestination,
-                           float m, int K,
-                           bool displayBorders, bool displaySuperpixels) {
+/// Apply SLIC algorithm and output image.
+void slic_image(const Imagine::Image<Imagine::Color>& Img,
+                Imagine::Image<Imagine::Color>& ImgDestination,
+                float m, int K,
+                bool displayBorders, bool displaySuperpixels) {
     const int w=Img.width(), h=Img.height();
     Imagine::Image<int> l(w,h);
 
     std::vector<Superpixel> sp = SLIC(Img, l, m, K);
     enforceConnectivity(sp, l, Img);
 
-    MakeSLICImage(displaySuperpixels, displayBorders, ImgDestination, sp, l);
+    slic_output(displaySuperpixels, displayBorders, ImgDestination, sp, l);
 
     // The following calls are unused here. They are just included to
     // demonstrate their usage.
@@ -122,7 +136,7 @@ int main(int argc, char* argv[]) {
 
     DisplayImage(Img, W, 0);
 
-    ImageSLICingAlgorithm(Img, DestinationImg, m, K, displayBorders, displaySuperpixels);
+    slic_image(Img, DestinationImg, m, K, displayBorders, displaySuperpixels);
 
     DisplayImage(DestinationImg, W, 1);
 
