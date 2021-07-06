@@ -14,6 +14,9 @@
 #include <vector>
 #include <Imagine/Common.h>
 
+/// Squared Euclidian distance between the two colors.
+int color_dist(const Imagine::Color& c1, const Imagine::Color& c2);
+
 class Superpixel {
 public:
     int x, y;                ///< Barycenter coordinates
@@ -23,18 +26,8 @@ public:
 public:
     Superpixel(int x0, int y0, const Imagine::Color& c);
 
-    /// \brief Computes the modified R^5 distance (position + color) between this Superpixel's center and the pixel pixel, located
-    // in (i, j) in the Imagine::Image<Imagine::Color> img being sliced
-    /// \param pixel
-    /// \param i
-    /// \param j
-    /// \param m
-    /// \param S
-    /// \return float
-    float howFar(const Imagine::Color& pixel, int i, int j, int m, int S) const;
-    // This distance is the D distance from the article : sqrt((m*euclidianDist/maxEuclidian)^2 + colorDist^2)
-    // m is the compactness parameter (user parameter) (weight of the color distance vs. the spatial distance).
-    // S is the initial side length of the Superpixel (deduced from the number of Superpixel wished)
+    /// R^5 distance (position+color) between the center and the pixel.
+    float dist5D(int i, int j, const Imagine::Color& c, float wSpace) const;
 };
 
 #endif // SUPERPIXEL_H

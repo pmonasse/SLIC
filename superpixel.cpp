@@ -10,6 +10,16 @@
 
 #include "superpixel.h"
 
+inline int sq(int x) { return x*x; }
+
+/// Squared Euclidian distance between the two colors.
+/// \param c1 Color
+/// \param c2 Color
+/// \return Squared distance
+int color_dist(const Imagine::Color& c1, const Imagine::Color& c2) {
+    return sq(c1.r()-c2.r()) + sq(c1.g()-c2.g()) + sq(c1.b()-c2.b());
+}
+
 // Construct the Superpixel with position, color and size
 Superpixel::Superpixel(int x0, int y0, const Imagine::Color& c) {
     x = x0;
@@ -19,10 +29,15 @@ Superpixel::Superpixel(int x0, int y0, const Imagine::Color& c) {
     pix = 0;
 }
 
-// Other methods
-float Superpixel::howFar(const Imagine::Color& pixel, int i, int j,
-                         int m, int S) const {
-    float eucldist = sqrt(float((x - i)*(x - i)) + float((y - j)*(y - j)));
-    float colordist = sqrt(float((col.r() - pixel.r())*(col.r() - pixel.r())) + float((col.g() - pixel.g())*(col.g() - pixel.g())) + float((col.b() - pixel.b())*(col.b() - pixel.b())));
-    return sqrt(float(m*m)*(eucldist*eucldist/float(S*S))+colordist*colordist);
+/// R^5 distance (position+color) between the center and the pixel.
+/// \param i Abscissa of pixel
+/// \param j Ordinate of pixel
+/// \param c Color of pixel
+/// \param wSpace Compactness parameter (weight of spatial distance)
+/// \return Squared distance
+float Superpixel::dist5D(int i, int j, const Imagine::Color& c,
+                         float wSpace) const {
+    int eucldist = sq(x-i)+sq(y-j);
+    int colordist = color_dist(col,c);
+    return wSpace*wSpace*(float)eucldist + (float)colordist;
 }

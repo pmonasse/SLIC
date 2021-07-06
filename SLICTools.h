@@ -13,7 +13,7 @@ bool is_in(const Imagine::Coords<2>& p, const Imagine::Image<T>& I)
 
 /// The SLIC algorithm
 std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
-                             Imagine::Image<int>& l, int m, int K);
+                             Imagine::Image<int>& l, float m, int K);
 
 /// Ensure that the Superpixels are connected
 void enforceConnectivity(std::vector<Superpixel>& sp, Imagine::Image<int>& l,

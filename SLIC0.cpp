@@ -11,7 +11,7 @@
 #include "SLICTools.h"
 #include <iostream>
 
-void GetSLICInputs(int& m, int& K, bool& displayBorders, bool& displaySuperpixels) {
+void GetSLICInputs(float& m, int& K, bool& displayBorders, bool& displaySuperpixels) {
     // Inputs
     std::cout << "Number of Superpixels: ";
     std::cin >> K;
@@ -75,7 +75,7 @@ void DisplayImage(const Imagine::Image<Imagine::Color>& Img,
 
 void ImageSLICingAlgorithm(const Imagine::Image<Imagine::Color>& Img,
                            Imagine::Image<Imagine::Color>& ImgDestination,
-                           int m, int K,
+                           float m, int K,
                            bool displayBorders, bool displaySuperpixels) {
     const int w=Img.width(), h=Img.height();
     Imagine::Image<int> l(w,h);
@@ -106,9 +106,8 @@ int main(int argc, char* argv[]) {
     Imagine::Image<Imagine::Color> Img = LoadImage(argv[1]);
     const int w=Img.width(), h=Img.height();
 
-    // m will be the compactness parameter
-    // K will be the number of superpixels
-    int m, K;
+    float m; // compactness parameter
+    int K; // required number of superpixels
     bool displayBorders;
     bool displaySuperpixels;
 

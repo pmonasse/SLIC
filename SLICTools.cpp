@@ -42,16 +42,6 @@ Imagine::Coords<2> neighbor(Imagine::Coords<2> p, int n) {
     return neighbor(p.x(), p.y(), n);
 }
 
-inline int sq(int x) { return x*x; }
-
-/// Return the squared Euclidian distance between the two colors.
-/// \param c1
-/// \param c2
-/// \return Squared distance
-int color_dist(Imagine::Color c1, Imagine::Color c2) {
-    return sq(c1.r()-c2.r()) + sq(c1.g()-c2.g()) + sq(c1.b()-c2.b());
-}
-
 /// Square norm of gradient at pixel \a p of color image \a Img.
 /// The sum of the squares of (horizontal and vertical) derivatives of channels.
 int sqNormGradient(const Imagine::Image<Imagine::Color>& Img,
@@ -126,13 +116,13 @@ void moveMinGradient(std::vector<Superpixel>& sp,
 /// Assignment step: each pixel is assigned to nearest superpixel
 /// \param sp Superpixels
 /// \param Img Input image
-/// \param m Compactness parameter
+/// \param wSpace Compactness parameter (weight of spatial distance)
 /// \param S Influence radius of superpixels
 /// \param l Index map of superpixel assignment
 /// \param d Distance map in (space,color)
 void assignmentStep(const std::vector<Superpixel>& sp,
                     const Imagine::Image<Imagine::Color>& Img,
-                    int m, int S, Imagine::Image<int>& l,
+                    float wSpace, int S, Imagine::Image<int>& l,
                     Imagine::Image<float>& d) {
     int K = (int)sp.size();
     for(int k=0; k<K; k++) // Look in 2Sx2S surrounding of superpixel center
@@ -141,7 +131,7 @@ void assignmentStep(const std::vector<Superpixel>& sp,
                 int ip=sp[k].x+i, jp=sp[k].y+j;
                 if(is_in(ip,jp, Img)) {
                     Imagine::Color col = Img(ip,jp);
-                    float dist = sp[k].howFar(col, ip,jp, m, S);
+                    float dist = sp[k].dist5D(ip, jp, col, wSpace);
                     if(d(ip, jp) > dist) {
                         d(ip,jp) = dist;
                         l(ip,jp) = k;
@@ -220,18 +210,19 @@ void moveCenters(std::vector<Superpixel>& sp,
 /// \param K Required number of superpixels
 /// \return Collection of superpixels
 std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
-                             Imagine::Image<int>& l, int m, int K) {
+                             Imagine::Image<int>& l, float m, int K) {
     auto t0 = std::chrono::high_resolution_clock::now();
 
     const int w=Img.width(), h=Img.height();
 
     std::vector<Superpixel> sp;
-    int S;  // S will the size of the grid step
+    int S;  // the size of the grid step
 
     initSuperpixels(sp, K, S, Img);
     l.fill(-1);
     Imagine::Image<float> d(w,h);  // distance map to superpixel's color
     d.fill(float(INFINITY));
+    float wSpace = m/(float)S; // spatial weight in 5D distance
 
     moveMinGradient(sp, Img, 5);
 
@@ -241,7 +232,7 @@ std::vector<Superpixel> SLIC(const Imagine::Image<Imagine::Color>& Img,
     float E = 1.0;
     std::cout << "Motions:";
     for(int i=0; E>0; i++) { // Main loop
-        assignmentStep(sp, Img, m, S, l, d);
+        assignmentStep(sp, Img, wSpace, S, l, d);
         updateStep(centers, l, Img); // Compute new centers of superpixels
         E = computeError(sp, centers);
         moveCenters(sp, centers); // Assign new centers to superpixels
