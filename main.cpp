@@ -21,18 +21,29 @@
  */
 
 #include "slic.h"
-#include <iostream>
+#include "cmdLine.h"
 
-void GetSLICInputs(float& m, int& K, bool& displayBorders, bool& displaySuperpixels) {
-    // Inputs
-    std::cout << "Number of Superpixels: ";
-    std::cin >> K;
-    std::cout << "Compactness parameter (>=1): ";
-    std::cin >> m;
-    std::cout << "Display borders? ";
-    std::cin >> displayBorders;
-    std::cout << "Display Superpixels? ";
-    std::cin >> displaySuperpixels;
+Imagine::Image<Imagine::Color> LoadImage(const char* img) {
+    Imagine::Image<Imagine::Color> Img;
+    if(!Imagine::load(Img, img)) {
+        std::cout << "Image loading error!" << std::endl;
+        Imagine::anyClick();
+    }
+    return Img;
+}
+
+void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name) {
+    if(! Imagine::save(img, name)) {
+        std::cerr << "Failed saving image " << name << std::endl;
+        throw "Error saving image";
+    }
+}
+
+/// Putting Image Img in Window W, subwindow subwin
+void DisplayImage(const Imagine::Image<Imagine::Color>& Img,
+                  Imagine::Window W, int subwin) {
+    Imagine::setActiveWindow(W, subwin);
+    display(Img);
 }
 
 /// Generate output image
@@ -60,32 +71,6 @@ void slic_output(bool superpixels, bool borders,
             }
 }
 
-Imagine::Image<Imagine::Color> LoadImage(const char* img) {
-    // Loading the image
-    // Test to ensure the image has been loaded
-    Imagine::Image<Imagine::Color> Img;
-    if(!Imagine::load(Img, img)) {
-        std::cout << "Image loading error!" << std::endl;
-        Imagine::anyClick();
-    }
-
-    return Img;
-}
-
-void SaveImage(const Imagine::Image<Imagine::Color>& img, const char* name) {
-    if(! Imagine::save(img, name)) {
-        std::cerr << "Failed saving image " << name << std::endl;
-        throw "Error saving image";
-    }
-}
-
-/// Putting Image Img in Window W, subwindow subwin
-void DisplayImage(const Imagine::Image<Imagine::Color>& Img,
-                  Imagine::Window W, int subwin) {
-    Imagine::setActiveWindow(W, subwin);
-    display(Img);
-}
-
 /// Apply SLIC algorithm and output image.
 void slic_image(const Imagine::Image<Imagine::Color>& Img,
                 Imagine::Image<Imagine::Color>& ImgDestination,
@@ -109,9 +94,20 @@ void slic_image(const Imagine::Image<Imagine::Color>& Img,
 }
 
 int main(int argc, char* argv[]) {
+    CmdLine cmd;
+    int K=1000; // required number of superpixels
+    float m=100; // compactness parameter
+    cmd.add( make_option('k',K).doc("Required number of superpixels") );
+    cmd.add( make_option('m',m).doc("Compactness parameter") );
 
+    try { cmd.process(argc, argv);
+    } catch(std::string str) {
+        std::cerr << "Error: " << str << std::endl;
+        return 1;
+    }
     if(argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " imgIn imgOut" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " [options] imgIn imgOut\n"
+                  << cmd << std::endl;
         return 1;
     }
 
@@ -120,12 +116,8 @@ int main(int argc, char* argv[]) {
     Imagine::Image<Imagine::Color> Img = LoadImage(argv[1]);
     const int w=Img.width(), h=Img.height();
 
-    float m; // compactness parameter
-    int K; // required number of superpixels
-    bool displayBorders;
-    bool displaySuperpixels;
-
-    GetSLICInputs(m, K, displayBorders, displaySuperpixels);
+    bool displayBorders=true;
+    bool displaySuperpixels=true;
 
     // Preparing the destination Image
     Imagine::Image<Imagine::Color> DestinationImg = Img.clone();
