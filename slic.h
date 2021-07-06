@@ -1,6 +1,6 @@
 /**
  * SPDX-License-Identifier: GPL-2.0+
- * @file SLICTools.h
+ * @file slic.h
  * @brief SLIC algorithm
  *
  * Copyright (c) 2021 Robin Gay, Pascal Monasse
@@ -20,8 +20,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef SLICTOOLS_H
-#define SLICTOOLS_H
+#ifndef SLIC_H
+#define SLIC_H
 
 #include <Imagine/Images.h>
 

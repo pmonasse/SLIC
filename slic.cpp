@@ -1,6 +1,6 @@
 /**
  * SPDX-License-Identifier: GPL-2.0+
- * @file SLICTools.cpp
+ * @file slic.cpp
  * @brief SLIC algorithm
  *
  * Copyright (c) 2021 Robin Gay, Pascal Monasse
@@ -20,7 +20,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "SLICTools.h"
+#include "slic.h"
 #include <algorithm>
 #include <stack>
 #include <queue>
