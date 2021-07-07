@@ -7,7 +7,6 @@ find_package(Imagine REQUIRED)
 project(SLIC)
 
 add_executable(SLIC 
-               superpixel.h superpixel.cpp
                slic.h slic.cpp
                main.cpp cmdLine.h)
 ImagineUseModules(SLIC Images)
