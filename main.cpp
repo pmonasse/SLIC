@@ -9,6 +9,7 @@
 
 #include "slic.h"
 #include "cmdLine.h"
+#include <Imagine/Images.h>
 
 Imagine::Image<Imagine::Color> LoadImage(const char* img) {
     Imagine::Image<Imagine::Color> Img;
@@ -37,34 +38,35 @@ void DisplayImage(const Imagine::Image<Imagine::Color>& Img,
 void slic_output(bool superpixels, bool borders,
                  Imagine::Image<Imagine::Color>& ImgDestination,
                  const std::vector<Superpixel>& sp,
-                 const Imagine::Image<int>& l) {
-    const int w=l.width(), h=l.height();
+                 const Image<int>& l) {
+    const int w=l.w, h=l.h;
     assert(ImgDestination.width()==w && ImgDestination.height()==h);
 
     // Replacing the color of each pixel by its Superparent's color
     if(superpixels)
         for(int j=0; j<h; j++)
             for(int i=0; i<w; i++)
-                ImgDestination(i,j) = l(i,j)>=0? sp[l(i,j)].col: Imagine::WHITE;
+                ImgDestination(i,j) = l(i,j)>=0?
+                    Imagine::Color(sp[l(i,j)].col.r,sp[l(i,j)].col.g,sp[l(i,j)].col.b): Imagine::WHITE;
 
     // Drawing the borders between the superpixels
     if(borders)
         for(int j=0; j<h; j++)
             for(int i=0; i<w; i++) {
-                Imagine::Coords<2> n1(i+1,j), n2(i,j+1);
-                if((is_in(n1,l) && l(n1)!=l(i,j)) ||
-                   (is_in(n2,l) && l(n2)!=l(i,j)))
+                Pixel n1(i+1,j), n2(i,j+1);
+                if((l.inside(n1) && l(n1)!=l(i,j)) ||
+                   (l.inside(n2) && l(n2)!=l(i,j)))
                     ImgDestination(i,j) = Imagine::WHITE;
             }
 }
 
 /// Apply SLIC algorithm and output image.
-void slic_image(const Imagine::Image<Imagine::Color>& Img,
+void slic_image(const Image<Color>& Img,
                 Imagine::Image<Imagine::Color>& ImgDestination,
                 float m, int K,
                 bool displayBorders, bool displaySuperpixels) {
-    const int w=Img.width(), h=Img.height();
-    Imagine::Image<int> l(w,h);
+    const int w=Img.w, h=Img.h;
+    Image<int> l(w,h);
 
     std::vector<Superpixel> sp = SLIC(Img, l, m, K);
     enforceConnectivity(sp, l, Img);
@@ -73,7 +75,7 @@ void slic_image(const Imagine::Image<Imagine::Color>& Img,
 
     // The following calls are unused here. They are just included to
     // demonstrate their usage.
-    Imagine::Coords<2>* pixels = fillSuperpixels(sp, l);
+    Pixel* pixels = fillSuperpixels(sp, l);
     delete [] pixels;
 
     std::vector< std::set<int> > adjMatrix;
@@ -115,7 +117,8 @@ int main(int argc, char* argv[]) {
 
     DisplayImage(Img, W, 0);
 
-    slic_image(Img, DestinationImg, m, K, displayBorders, displaySuperpixels);
+    Image<Color> I(Img.width(), Img.height(), (unsigned char*)Img.data());
+    slic_image(I, DestinationImg, m, K, displayBorders, displaySuperpixels);
 
     DisplayImage(DestinationImg, W, 1);
 
