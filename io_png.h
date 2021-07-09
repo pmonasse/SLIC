@@ -1,3 +1,23 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later or BSD-2-Clause
+ * @file io_png.h
+ * @brief PNG input/output
+ *
+ * Copyright (c) 2010-2011, Nicolas Limare <nicolas.limare@cmla.ens-cachan.fr>
+ * Copyright (c) 2021, Pascal Monasse <pascal.monasse@enpc.fr>
+ * All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under, at your option, the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version, or
+ * the terms of the simplified BSD license.
+ *
+ * You should have received a copy of these licenses along this
+ * program. If not, see <http://www.gnu.org/licenses/> and
+ * <http://www.opensource.org/licenses/bsd-license.html>.
+ */
+
 #ifndef _IO_PNG_H
 #define _IO_PNG_H
 

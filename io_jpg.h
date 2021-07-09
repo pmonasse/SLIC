@@ -1,3 +1,11 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later or BSD-2-Clause
+ * @file io_jpg.h
+ * @brief JPEG input/output
+ *
+ * Copyright (c) 2021, Pascal Monasse <pascal.monasse@enpc.fr>
+ */
+
 #ifndef IO_JPG_H
 #define IO_JPG_H
 

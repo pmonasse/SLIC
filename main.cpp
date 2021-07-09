@@ -1,10 +1,9 @@
 /**
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  * @file main.cpp
  * @brief input/output for SLIC algorithm
  *
  * Copyright (c) 2021 Robin Gay, Pascal Monasse
- * All rights reserved.
  */
 
 #include "slic.h"

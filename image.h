@@ -1,10 +1,9 @@
 /**
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  * @file image.h
  * @brief Elementary image class
  *
  * Copyright (c) 2021 Robin Gay, Pascal Monasse
- * All rights reserved.
  */
 
 #ifndef IMAGE_H
@@ -12,12 +11,14 @@
 
 #include <cstring>
 
+/// Pixel location
 struct Pixel {
     int x,y;
     Pixel() {}
     Pixel(int x0, int y0): x(x0), y(y0) {}
 };
 
+/// RGB Color
 struct Color {
     unsigned char r,g,b;
     Color() {}
@@ -57,12 +58,14 @@ private:
     void operator=(const Image&);
 };
 
+/// Constructor
 template <typename T>
 Image<T>::Image(int w0, int h0)
 : w(w0), h(h0) {
     data = new T[w*h];
 }
 
+/// Constructor copying data
 template <typename T>
 Image<T>::Image(int w0, int h0, unsigned char* rawdata)
 : w(w0), h(h0) {
@@ -70,11 +73,13 @@ Image<T>::Image(int w0, int h0, unsigned char* rawdata)
     std::memcpy(data, rawdata, w*h*sizeof(T));
 }
 
+/// Destructor
 template <typename T>
 Image<T>::~Image() {
     delete [] data;
 }
 
+/// Fill with constant value
 template <typename T>
 void Image<T>::fill(T value) {
     T* p=data;
@@ -83,11 +88,13 @@ void Image<T>::fill(T value) {
             *p++ = value;
 }
 
+/// Pixel access (read-only)
 template <typename T>
 T Image<T>::operator()(int i, int j) const {
     return data[i+j*w];
 }
 
+/// Pixel access (read/write)
 template <typename T>
 T& Image<T>::operator()(int i, int j) {
     return data[i+j*w];

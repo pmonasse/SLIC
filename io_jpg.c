@@ -1,3 +1,22 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-or-later or BSD-2-Clause
+ * @file io_jpg.c
+ * @brief JPEG input/output
+ *
+ * Copyright (c) 2021, Pascal Monasse <pascal.monasse@enpc.fr>
+ * All rights reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under, at your option, the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version, or
+ * the terms of the simplified BSD license.
+ *
+ * You should have received a copy of these licenses along this
+ * program. If not, see <http://www.gnu.org/licenses/> and
+ * <http://www.opensource.org/licenses/bsd-license.html>.
+ */
+
 #include "io_jpg.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,7 +29,7 @@ struct my_error_mgr {
   jmp_buf setjmp_buffer;
 };
 
-METHODDEF(void) jpeg_error (j_common_ptr cinfo) {
+METHODDEF(void) jpeg_error(j_common_ptr cinfo) {
   struct my_error_mgr *myerr = (struct my_error_mgr*) cinfo->err;
   (*cinfo->err->output_message)(cinfo);
   longjmp(myerr->setjmp_buffer, 1);

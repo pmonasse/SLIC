@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: GPL-3.0-or-later or BSD-2-Clause
+ * @file io_png.c
+ * @brief PNG input/output
+ *
  * Copyright (c) 2010-2011, Nicolas Limare <nicolas.limare@cmla.ens-cachan.fr>
  * Copyright (c) 2021, Pascal Monasse <pascal.monasse@enpc.fr>
  * All rights reserved.
