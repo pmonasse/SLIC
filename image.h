@@ -25,6 +25,7 @@ struct Color {
     : r(r0), g(g0), b(b0) {}    
 };
 
+/// A simple (simplistic?) image class
 template <typename T>
 struct Image {
     const int w,h;
