@@ -2,11 +2,27 @@ cmake_minimum_required(VERSION 2.6)
 
 project(SLIC)
 
-find_package(JPEG REQUIRED)
-include_directories(${JPEG_INCLUDE_DIR})
+# zlib is needed by libPNG
+find_package(ZLIB)
+if(NOT ZLIB_FOUND)
+  add_subdirectory(third_party/zlib)
+endif(NOT ZLIB_FOUND)
+include_directories(${ZLIB_INCLUDE_DIRS})
 
-find_package(PNG REQUIRED)
-include_directories(${PNG_INCLUDE_DIR})
+find_package(PNG)
+if(PNG_FOUND)
+  add_definitions(${PNG_DEFINITIONS})
+else(PNG_FOUND)
+  set(SKIP_INSTALL_ALL 1)
+  add_subdirectory(third_party/png)
+endif(PNG_FOUND)
+include_directories(${PNG_INCLUDE_DIRS})
+
+find_package(JPEG)
+if(NOT JPEG_FOUND)
+  add_subdirectory(third_party/jpeg)
+endif(NOT JPEG_FOUND)
+include_directories(${JPEG_INCLUDE_DIR})
 
 add_executable(SLIC
   image.h
