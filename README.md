@@ -17,4 +17,5 @@ Usage
 ./SLIC [options] imgIn imgOut
 -k ARG Required number of superpixels (1000)
 -m ARG Compactness parameter (100)
+-g ARG Radius for minimal gradient search (0)
 ```

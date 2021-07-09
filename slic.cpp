@@ -240,9 +240,10 @@ void moveCenters(std::vector<Superpixel>& sp,
 /// \param[out] l Label map of superpixel index
 /// \param m Compactness parameter
 /// \param K Required number of superpixels
+/// \param g Radius for minimal gradient search
 /// \return Collection of superpixels
 std::vector<Superpixel> SLIC(const Image<Color>& Img,
-                             Image<int>& l, float m, int K) {
+                             Image<int>& l, float m, int K, int g) {
     auto t0 = std::chrono::high_resolution_clock::now();
 
     const int w=Img.w, h=Img.h;
@@ -256,7 +257,7 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
     d.fill(float(INFINITY));
     float wSpace = m/(float)S; // spatial weight in 5D distance
 
-    moveMinGradient(sp, Img, 5);
+    moveMinGradient(sp, Img, g);
 
     std::vector<int> il = {0, 0, 0, 0, 0, 0};
     std::vector< std::vector<int> > centers(sp.size(), il);

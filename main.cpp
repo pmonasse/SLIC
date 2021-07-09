@@ -75,11 +75,12 @@ void slic_output(Image<Color>& out,
 }
 
 /// Apply SLIC algorithm and output image.
-void slic_image(const Image<Color>& in, Image<Color>& out, float m, int K) {
+void slic_image(const Image<Color>& in, Image<Color>& out,
+                float m, int K, int g) {
     const int w=in.w, h=in.h;
     Image<int> l(w,h);
 
-    std::vector<Superpixel> sp = SLIC(in, l, m, K);
+    std::vector<Superpixel> sp = SLIC(in, l, m, K, g);
     enforceConnectivity(sp, l, in);
 
     slic_output(out, sp, l);
@@ -96,8 +97,10 @@ int main(int argc, char* argv[]) {
     CmdLine cmd;
     int K=1000; // required number of superpixels
     float m=100; // compactness parameter
+    int g=0;
     cmd.add( make_option('k',K).doc("Required number of superpixels") );
     cmd.add( make_option('m',m).doc("Compactness parameter") );
+    cmd.add( make_option('g',g).doc("Radius for minimal gradient search") );
     try { cmd.process(argc, argv);
     } catch(std::string str) {
         std::cerr << "Error: " << str << std::endl;
@@ -119,7 +122,7 @@ int main(int argc, char* argv[]) {
     Image<Color> out(img.w, img.h);
     free(data);
 
-    slic_image(img, out, m, K);
+    slic_image(img, out, m, K, g);
 
     if(! save(out, argv[2])) {
         std::cerr << "Failed writing image " << argv[2] << std::endl;

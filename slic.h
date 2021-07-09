@@ -29,7 +29,7 @@ public:
 
 /// The SLIC algorithm
 std::vector<Superpixel> SLIC(const Image<Color>& Img,
-                             Image<int>& l, float m, int K);
+                             Image<int>& l, float m, int K, int g=0);
 
 /// Ensure that the Superpixels are connected
 void enforceConnectivity(std::vector<Superpixel>& sp, Image<int>& l,
