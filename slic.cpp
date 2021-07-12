@@ -10,9 +10,10 @@
 #include <algorithm>
 #include <stack>
 #include <queue>
-#include <chrono>
 #include <iostream>
+#include <limits>
 #include <cmath>
+#include <ctime>
 #include <cassert>
 
 inline int sq(int x) { return x*x; }
@@ -57,7 +58,7 @@ float Superpixel::dist5D(int i, int j, const Color& c, float wSpace) const {
 /// \return neighbor of pixel (i,j) (beware, may be outside image)
 Pixel neighbor(int i, int j, int n) {
     assert(n >= 0 && n < 4);
-    Pixel p = {i,j};
+    Pixel p(i,j);
     switch(n) {
     case 0: ++p.x; break;
     case 1: --p.y; break;
@@ -177,7 +178,7 @@ void assignmentStep(const std::vector<Superpixel>& sp,
 /// \param[out] centers: 6-vector (x,y,r,g,b,n) with n the number of pixels.
 /// \param l Index map of superpixels
 /// \param Img Input image
-void updateStep(std::vector<std::vector<int>>& centers,
+void updateStep(std::vector< std::vector<int> >& centers,
                 const Image<int>& l, const Image<Color>& Img) {
     int K = (int)centers.size();
     for(int k=0; k<K; k++)
@@ -244,7 +245,7 @@ void moveCenters(std::vector<Superpixel>& sp,
 /// \return Collection of superpixels
 std::vector<Superpixel> SLIC(const Image<Color>& Img,
                              Image<int>& l, float m, int K, int g) {
-    auto t0 = std::chrono::high_resolution_clock::now();
+    clock_t t0 = clock();
 
     const int w=Img.w, h=Img.h;
 
@@ -252,19 +253,19 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
     int S;  // the size of the grid step
 
     initSuperpixels(sp, K, S, Img);
-    l.fill(-1);
-    Image<float> d(w,h);  // distance map to superpixel's color
-    float wSpace = m/(float)S; // spatial weight in 5D distance
-
     moveMinGradient(sp, Img, g);
 
-    std::vector<int> il = {0, 0, 0, 0, 0, 0};
+    l.fill(-1);
+    Image<float> d(w,h);  // distance map to superpixel's color
+    const float wSpace = m/(float)S; // spatial weight in 5D distance
+
+    std::vector<int> il(6, 0); // 6 times zero
     std::vector< std::vector<int> > centers(sp.size(), il);
 
     float E = 1.0;
     std::cout << "Motions:";
     for(int i=0; E>0; i++) { // Main loop
-        d.fill(float(INFINITY));
+        d.fill(std::numeric_limits<float>::max());
         assignmentStep(sp, Img, wSpace, S, l, d);
         updateStep(centers, l, Img); // Compute new centers of superpixels
         E = computeError(sp, centers);
@@ -273,9 +274,8 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
     }
     std::cout << std::endl;
 
-    auto t1 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> t = t1-t0;
-    std::cout << "Elapsed time for SLIC: " << t.count() << std::endl;
+    clock_t t1 = clock();
+    std::cout << "Time SLIC: " << (t1-t0)/(double)CLOCKS_PER_SEC << std::endl;
 
     return sp;
 }
@@ -439,17 +439,15 @@ void enforceConnectivity(std::vector<Superpixel>& sp, Image<int>& l,
     Image<int> cc(l.w,l.h); // Labels of cc
     std::vector<int> compSizes; // Sizes of the cc
 
-    auto t0 = std::chrono::high_resolution_clock::now();
+    clock_t t0 = clock();
+
     labelCC(cc, compSizes, l);
-
     discardMinorCC(cc, compSizes, l, sp.size());
-
     computeSuperpixelColors(sp, l, Img);
-
     assignOrphans(sp, l, Img);
 
-    auto t1 = std::chrono::high_resolution_clock::now();
-    std::cout << "Time CC: " << std::chrono::duration<double>(t1-t0).count() << std::endl;
+    clock_t t1 = clock();
+    std::cout << "Time CC:   " << (t1-t0)/(double)CLOCKS_PER_SEC << std::endl;
 }
 
 /// Functor to compare pixel coordinates according to their superpixel.
