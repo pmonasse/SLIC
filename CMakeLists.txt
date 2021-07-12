@@ -6,6 +6,7 @@ project(SLIC)
 find_package(ZLIB)
 if(NOT ZLIB_FOUND)
   add_subdirectory(third_party/zlib)
+  set(ZLIB_LIBRARY ${ZLIB_LIBRARIES})
 endif(NOT ZLIB_FOUND)
 include_directories(${ZLIB_INCLUDE_DIRS})
 
