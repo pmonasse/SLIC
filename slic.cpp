@@ -254,7 +254,6 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
     initSuperpixels(sp, K, S, Img);
     l.fill(-1);
     Image<float> d(w,h);  // distance map to superpixel's color
-    d.fill(float(INFINITY));
     float wSpace = m/(float)S; // spatial weight in 5D distance
 
     moveMinGradient(sp, Img, g);
@@ -265,6 +264,7 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
     float E = 1.0;
     std::cout << "Motions:";
     for(int i=0; E>0; i++) { // Main loop
+        d.fill(float(INFINITY));
         assignmentStep(sp, Img, wSpace, S, l, d);
         updateStep(centers, l, Img); // Compute new centers of superpixels
         E = computeError(sp, centers);
