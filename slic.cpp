@@ -107,7 +107,7 @@ int sqNormGradient(const Image<Color>& Img, const Pixel& p) {
 void initSuperpixels(std::vector<Superpixel>& sp, int& K, int& S,
                      const Image<Color>& Img) {
     const int w=Img.w, h=Img.h;
-    S = (int) sqrt(w*h/(double)K); // Initial size of superpixels
+    S = std::max(1,(int)sqrt(w*h/(double)K)); // Initial size of superpixels
 
     const int nx = std::max(1,w/S), ny = std::max(1,h/S);
     const int padw = std::max(0,w-S*nx), padh = std::max(0,h-S*ny), s=S/2;
