@@ -11,6 +11,8 @@
 #include "io_jpg.h"
 #include "io_png.h"
 
+const Color WHITE(255,255,255);
+
 /// Extensions for JPEG files
 const std::string JPG[]={"jpg","JPG","jpeg","JPEG"};
 const size_t NJPG = sizeof(JPG)/sizeof(JPG[0]);
@@ -52,9 +54,8 @@ bool save(const Image<Color>& img, const char* fname) {
 /// Generate output image
 void slic_output(Image<Color>& out,
                  const std::vector<Superpixel>& sp, const Image<int>& l,
-                 bool superpixels=true, bool borders=true) {
+                 const Color& col, bool superpixels=true, bool borders=true) {
     const int w=l.w, h=l.h;
-    const Color WHITE(255,255,255);
     assert(out.w==w && out.h==h);
 
     // Replacing the color of each pixel by its Superparent's color
@@ -70,20 +71,20 @@ void slic_output(Image<Color>& out,
                 Pixel n1(i+1,j), n2(i,j+1);
                 if((l.inside(n1) && l(n1)!=l(i,j)) ||
                    (l.inside(n2) && l(n2)!=l(i,j)))
-                    out(i,j) = WHITE;
+                    out(i,j) = col;
             }
 }
 
 /// Apply SLIC algorithm and output image.
 void slic_image(const Image<Color>& in, Image<Color>& out,
-                float m, int K, int g) {
+                float m, int K, int g, const Color& col) {
     const int w=in.w, h=in.h;
     Image<int> l(w,h);
 
     std::vector<Superpixel> sp = SLIC(in, l, m, K, g);
     enforceConnectivity(sp, l, in);
 
-    slic_output(out, sp, l);
+    slic_output(out, sp, l, col);
 
     // The following calls are useless here, just to show their usage.
     Pixel* pixels = fillSuperpixels(sp, l);
@@ -97,10 +98,12 @@ int main(int argc, char* argv[]) {
     CmdLine cmd;
     int K=1000; // required number of superpixels
     float m=100; // compactness parameter
+    Color col = WHITE;
     int g=0;
     cmd.add( make_option('k',K).doc("Required number of superpixels") );
     cmd.add( make_option('m',m).doc("Compactness parameter") );
     cmd.add( make_option('g',g).doc("Radius for minimal gradient search") );
+    cmd.add( make_option('c',col).doc("Color of boundary") );
     try { cmd.process(argc, argv);
     } catch(std::string str) {
         std::cerr << "Error: " << str << std::endl;
@@ -122,7 +125,7 @@ int main(int argc, char* argv[]) {
     Image<Color> out(img.w, img.h);
     free(data);
 
-    slic_image(img, out, m, K, g);
+    slic_image(img, out, m, K, g, col);
 
     if(! save(out, argv[2])) {
         std::cerr << "Failed writing image " << argv[2] << std::endl;

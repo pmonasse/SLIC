@@ -10,6 +10,7 @@
 #define IMAGE_H
 
 #include <cstring>
+#include <iostream>
 
 /// Pixel location
 struct Pixel {
@@ -25,6 +26,19 @@ struct Color {
     Color(unsigned char r0, unsigned char g0, unsigned char b0)
     : r(r0), g(g0), b(b0) {}    
 };
+
+/// Output Color
+inline std::ostream& operator<<(std::ostream& s, const Color& c)  {
+    return s << c.r << ',' << c.g << ',' << c.b;
+}
+/// Input Color
+inline std::istream& operator>>(std::istream& s, Color& c) {
+    char sep;
+    int r=0,g=0,b=0;
+    s >> r >> sep >> g >> sep >> b;
+    c.r=r; c.g=g; c.b=b;
+    return s;
+}
 
 /// A simple (simplistic?) image class
 template <typename T>
