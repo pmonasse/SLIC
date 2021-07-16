@@ -16,6 +16,9 @@
 #include <ctime>
 #include <cassert>
 
+/// Maximum iterations of SLIC
+static const int MAX_ITER_SLIC=1000;
+
 inline int sq(int x) { return x*x; }
 
 /// Squared Euclidian distance between the two colors.
@@ -264,7 +267,7 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
 
     float E = 1.0;
     std::cout << "Motions:";
-    for(int i=0; E>0; i++) { // Main loop
+    for(int i=0; i<MAX_ITER_SLIC && E>0; i++) { // Main loop
         d.fill(std::numeric_limits<float>::max());
         assignmentStep(sp, Img, wSpace, S, l, d);
         updateStep(centers, l, Img); // Compute new centers of superpixels
@@ -273,7 +276,10 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
         std::cout << ' ' << E << std::flush;
     }
     std::cout << std::endl;
-
+    if(E>0)
+        std::cerr << "Warning: SLIC stopped before convergence at "
+                  << MAX_ITER_SLIC << " iterations" << std::endl;
+    
     clock_t t1 = clock();
     std::cout << "Time SLIC: " << (t1-t0)/(double)CLOCKS_PER_SEC << std::endl;
 
