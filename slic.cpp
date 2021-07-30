@@ -21,7 +21,7 @@ static const int MAX_ITER_SLIC=1000;
 
 inline int sq(int x) { return x*x; }
 
-/// Squared Euclidian distance between the two colors.
+/// Squared Euclidian distance between the two colors. Eq. (11)
 /// \param c1 Color
 /// \param c2 Color
 /// \return Squared distance
@@ -38,7 +38,7 @@ Superpixel::Superpixel(int x0, int y0, const Color& c) {
     pix = 0;
 }
 
-/// R^5 distance (position+color) between the center and the pixel.
+/// R^5 distance (position+color) between the center and the pixel. Eq. (12)
 /// \param i Abscissa of pixel
 /// \param j Ordinate of pixel
 /// \param c Color of pixel
@@ -81,7 +81,7 @@ Pixel neighbor(const Pixel& p, int n) {
     return neighbor(p.x, p.y, n);
 }
 
-/// Square norm of gradient at pixel \a p of color image \a I.
+/// Square norm of gradient at pixel \a p of color image \a I. Algo. 4
 /// The sum of the squares of (horizontal and vertical) derivatives of channels.
 int sqNormGradient(const Image<Color>& I, const Pixel& p) {
     int g=0;
@@ -104,6 +104,7 @@ int sqNormGradient(const Image<Color>& I, const Pixel& p) {
 }
 
 /// Init superpixels. Their number is adjusted according to the image size.
+/// Section 3.2
 /// \param[in,out] K Required number of superpixels
 /// \param[out] S Dimension of superpixels
 /// \param I Input image
@@ -124,7 +125,7 @@ void initSuperpixels(std::vector<Superpixel>& sp, int& K, int& S,
     K = (int)sp.size();
 }
 
-/// Relocalize superpixel centers to lowest gradient position.
+/// Relocalize superpixel centers to lowest gradient position. Algo. 4
 /// \param sp Superpixels
 /// \param I Input image
 /// \param radius Radius of max motion
@@ -150,7 +151,8 @@ void moveMinGradient(std::vector<Superpixel>& sp,
     }
 }
 
-/// Assignment step: each pixel is assigned to nearest superpixel
+/// Assignment step: each pixel is assigned to nearest superpixel.
+/// Algo. 5 (inner for loop)
 /// \param sp Superpixels
 /// \param I Input image
 /// \param wSpace Compactness parameter (weight of spatial distance)
@@ -177,7 +179,7 @@ void assignmentStep(const std::vector<Superpixel>& sp,
             }
 }
 
-/// First part of update step: returns center of each cluster.
+/// First part of update step: returns center of each cluster. Algo. 1
 /// \param[out] centers: 6-vector (x,y,r,g,b,n) with n the number of pixels.
 /// \param l Index map of superpixels
 /// \param I Input image
@@ -237,7 +239,7 @@ void moveCenters(std::vector<Superpixel>& sp,
     }
 }
 
-/// The main SLIC loop.
+/// The main SLIC loop. Algo. 5
 /// The number of superpixels is deduced from K and the image dimensions.
 /// \a l is a map giving for each pixel the index of the assigned superpixel.
 /// \param I The input image
@@ -286,11 +288,11 @@ std::vector<Superpixel> SLIC(const Image<Color>& I,
     return sp;
 }
 
-/// Connected components labelling algorithm.
+/// Connected components labelling algorithm. Algo. 6
 /// \param[out] cc Pixels get label of their connected component.
-/// \param[out] compSizes For each label of cc, its number of pixels.
+/// \param[out] H Histogram of \a cc.
 /// \param[in] l Image whose cc of isolevels must be extracted.
-void labelCC(Image<int>& cc, std::vector<int>& compSizes, const Image<int>& l) {
+void labelCC(Image<int>& cc, std::vector<int>& H, const Image<int>& l) {
     cc.fill(-1);
     std::stack<Pixel> S;
     const int w=l.w, h=l.h;
@@ -300,11 +302,11 @@ void labelCC(Image<int>& cc, std::vector<int>& compSizes, const Image<int>& l) {
                 continue;
             S.push(Pixel(i,j));
             int label=l(i,j);
-            int labelcc = static_cast<int>(compSizes.size());
+            int labelcc = static_cast<int>(H.size());
             cc(i,j)=labelcc;
-            compSizes.push_back(0);
+            H.push_back(0);
             while(! S.empty()) {
-                ++compSizes.back();
+                ++H.back();
                 Pixel p = S.top();
                 S.pop();
                 for(int n=0; n<4; n++) { // Testing neighbors
@@ -315,17 +317,17 @@ void labelCC(Image<int>& cc, std::vector<int>& compSizes, const Image<int>& l) {
                     }
                 }
             }
-            // std::cout << compSizes.back() << ' ' << std::flush;
+            // std::cout << H.back() << ' ' << std::flush;
         }
     // std::cout << std::endl;
 }
 
-/// Reduce superpixels to their largest connected component
+/// Reduce superpixels to their largest connected component. Algo. 7
 /// \param[in,out] cc connected component labels
-/// \param compSizes Size of each cc
+/// \param H Histogram of \a cc
 /// \param[in,out] l Labels of superpixels
 /// \param K Number of superpixels (number of values in l)
-void discardMinorCC(Image<int>& cc, const std::vector<int>& compSizes,
+void discardMinorCC(Image<int>& cc, const std::vector<int>& H,
                     Image<int>& l, size_t K) {
     const int w=l.w, h=l.h;
     std::vector<int> maxSizeCC(K,-1); // superpixel -> label of largest cc
@@ -337,7 +339,7 @@ void discardMinorCC(Image<int>& cc, const std::vector<int>& compSizes,
             int labelS=l(i,j); // Label of superpixel
             if(labelS>=0) {
                 int& s = maxSizeCC[labelS];
-                if(s<0 || compSizes[s]<compSizes[labelcc])
+                if(s<0 || H[s]<H[labelcc])
                     s = labelcc;
             }
         }
@@ -383,7 +385,8 @@ void computeSuperpixelColors(std::vector<Superpixel>& sp,
         }
 }
 
-/// Assign orphan pixels to nearest (in color) superpixel they are connected to
+/// Assign orphan pixels to nearest (in color) superpixel they are connected to.
+/// Algo. 8, Algo. 9
 /// \param sp The superpixels
 /// \param[in,out] l
 /// \param I
@@ -397,7 +400,7 @@ void assignOrphans(const std::vector<Superpixel>& sp, Image<int>& l,
             if(l(i,j)<0)
                 l(i,j)=std::numeric_limits<int>::min();
 
-    // Do sucessive dilatations until all orphans are queued
+    // Do sucessive dilatations until all orphans are queued. Algo 8
     for(int dist=-1; true; --dist) {
         size_t Qsize = Q.size();
         for(int j=0; j<h; j++)
@@ -415,7 +418,7 @@ void assignOrphans(const std::vector<Superpixel>& sp, Image<int>& l,
         Qsize = Q.size();
     }
 
-    while(! Q.empty()) {
+    while(! Q.empty()) { // Algo. 9
         Pixel p = Q.front();
         Q.pop();
         int nearest = -1;
@@ -443,12 +446,12 @@ void assignOrphans(const std::vector<Superpixel>& sp, Image<int>& l,
 void enforceConnectivity(std::vector<Superpixel>& sp, Image<int>& l,
                          const Image<Color>& I) {
     Image<int> cc(l.w,l.h); // Labels of cc
-    std::vector<int> compSizes; // Sizes of the cc
+    std::vector<int> H; // Histogram of cc
 
     clock_t t0 = clock();
 
-    labelCC(cc, compSizes, l);
-    discardMinorCC(cc, compSizes, l, sp.size());
+    labelCC(cc, H, l);
+    discardMinorCC(cc, H, l, sp.size());
     computeSuperpixelColors(sp, l, I);
     assignOrphans(sp, l, I);
 
@@ -467,7 +470,7 @@ struct CompareLabels {
 
 /// Return an allocated array of pixel coordinates. Each superpixel has a
 /// pointer \c pix to its first pixel inside this array, its field \c size
-/// indicates the number of consecutive pixels.
+/// indicates the number of consecutive pixels. Algo. 2
 Pixel* fillSuperpixels(std::vector<Superpixel>& sp, const Image<int>& l){
     const int w=l.w, h=l.h, n=w*h;
     Pixel* c = new Pixel[n];
@@ -494,7 +497,7 @@ Pixel* fillSuperpixels(std::vector<Superpixel>& sp, const Image<int>& l){
 
 /// Compute the (compressed) adjacency matrix of superpixels.
 /// adjMatrix[k] indicates the index of superpixels adjacent to superpixel k.
-/// 4-connectivity is used.
+/// 4-connectivity is used. Algo. 3
 void adjacencySuperpixels(const Image<int>& l,
                           std::vector< std::set<int> >& adjMatrix) {
     const int w=l.w, h=l.h;
