@@ -29,7 +29,7 @@ struct Color {
 
 /// Output Color
 inline std::ostream& operator<<(std::ostream& s, const Color& c)  {
-    return s << c.r << ',' << c.g << ',' << c.b;
+    return s << (int)c.r << ',' << (int)c.g << ',' << (int)c.b;
 }
 /// Input Color
 inline std::istream& operator>>(std::istream& s, Color& c) {

@@ -81,35 +81,35 @@ Pixel neighbor(const Pixel& p, int n) {
     return neighbor(p.x, p.y, n);
 }
 
-/// Square norm of gradient at pixel \a p of color image \a Img.
+/// Square norm of gradient at pixel \a p of color image \a I.
 /// The sum of the squares of (horizontal and vertical) derivatives of channels.
-int sqNormGradient(const Image<Color>& Img, const Pixel& p) {
+int sqNormGradient(const Image<Color>& I, const Pixel& p) {
     int g=0;
     Pixel q = p;
     ++q.x;
-    if(! Img.inside(q))
+    if(! I.inside(q))
         q.x = p.x-1;
-    if(! Img.inside(q))
+    if(! I.inside(q))
         q.x = p.x; // case w=1
-    g += color_dist(Img(q),Img(p));
+    g += color_dist(I(q),I(p));
 
     q = p;
     ++q.y;
-    if(! Img.inside(q))
+    if(! I.inside(q))
         q.y = p.y-1;
-    if(! Img.inside(q))
+    if(! I.inside(q))
         q.y = p.y; // case h=1
-    g += color_dist(Img(q),Img(p));
+    g += color_dist(I(q),I(p));
     return g;
 }
 
 /// Init superpixels. Their number is adjusted according to the image size.
 /// \param[in,out] K Required number of superpixels
 /// \param[out] S Dimension of superpixels
-/// \param Img Input image
+/// \param I Input image
 void initSuperpixels(std::vector<Superpixel>& sp, int& K, int& S,
-                     const Image<Color>& Img) {
-    const int w=Img.w, h=Img.h;
+                     const Image<Color>& I) {
+    const int w=I.w, h=I.h;
     S = std::max(1,(int)sqrt(w*h/(double)K)); // Initial size of superpixels
 
     const int nx = std::max(1,w/S), ny = std::max(1,h/S);
@@ -118,19 +118,19 @@ void initSuperpixels(std::vector<Superpixel>& sp, int& K, int& S,
     for(int j=0; j<ny; j++)
         for(int i=0; i<nx; i++) {
             int ii=i*S+s+padw/2, jj=j*S+s+padh/2;
-            if(Img.inside(ii,jj))
-                sp.push_back(Superpixel(ii, jj, Img(ii,jj)));
+            if(I.inside(ii,jj))
+                sp.push_back(Superpixel(ii, jj, I(ii,jj)));
         }
     K = (int)sp.size();
 }
 
 /// Relocalize superpixel centers to lowest gradient position.
 /// \param sp Superpixels
-/// \param Img Input image
+/// \param I Input image
 /// \param radius Radius of max motion
 /// A negative value of radius is a no-op.
 void moveMinGradient(std::vector<Superpixel>& sp,
-                     const Image<Color>& Img, int radius) {
+                     const Image<Color>& I, int radius) {
     size_t K = sp.size();
     for(size_t k=0; k<K; k++) {
         int minNorm = std::numeric_limits<int>::max();
@@ -138,8 +138,8 @@ void moveMinGradient(std::vector<Superpixel>& sp,
         for(int j=-radius; j<=radius; j++)
             for(int i=-radius; i<=radius; i++) {
                 Pixel p(x+i,y+j);
-                if(Img.inside(p)) {
-                    int g = sqNormGradient(Img,p);
+                if(I.inside(p)) {
+                    int g = sqNormGradient(I,p);
                     if(g < minNorm) {
                         sp[k].x = p.x;
                         sp[k].y = p.y;
@@ -152,13 +152,13 @@ void moveMinGradient(std::vector<Superpixel>& sp,
 
 /// Assignment step: each pixel is assigned to nearest superpixel
 /// \param sp Superpixels
-/// \param Img Input image
+/// \param I Input image
 /// \param wSpace Compactness parameter (weight of spatial distance)
 /// \param S Influence radius of superpixels
 /// \param l Index map of superpixel assignment
 /// \param d Distance map in (space,color)
 void assignmentStep(const std::vector<Superpixel>& sp,
-                    const Image<Color>& Img,
+                    const Image<Color>& I,
                     float wSpace, int S, Image<int>& l,
                     Image<float>& d) {
     int K = (int)sp.size();
@@ -166,8 +166,8 @@ void assignmentStep(const std::vector<Superpixel>& sp,
         for(int i=-S; i<S; i++)
             for(int j=-S; j<S; j++) {
                 int ip=sp[k].x+i, jp=sp[k].y+j;
-                if(Img.inside(ip,jp)) {
-                    Color col = Img(ip,jp);
+                if(I.inside(ip,jp)) {
+                    Color col = I(ip,jp);
                     float dist = sp[k].dist5D(ip, jp, col, wSpace);
                     if(d(ip, jp) > dist) {
                         d(ip,jp) = dist;
@@ -180,19 +180,19 @@ void assignmentStep(const std::vector<Superpixel>& sp,
 /// First part of update step: returns center of each cluster.
 /// \param[out] centers: 6-vector (x,y,r,g,b,n) with n the number of pixels.
 /// \param l Index map of superpixels
-/// \param Img Input image
+/// \param I Input image
 void updateStep(std::vector< std::vector<int> >& centers,
-                const Image<int>& l, const Image<Color>& Img) {
+                const Image<int>& l, const Image<Color>& I) {
     int K = (int)centers.size();
     for(int k=0; k<K; k++)
         for(int l=0; l<6; l++)
             centers[k][l] = 0;
 
-    const int w=Img.w, h=Img.h;
+    const int w=I.w, h=I.h;
     for(int j=0; j<h; j++)
         for(int i=0; i<w; i++) {
             // Adding (x,y,r,g,b) of pixel to its superparent's center
-            int pix[5] = {i,j, Img(i,j).r,Img(i,j).g,Img(i,j).b};
+            int pix[5] = {i,j, I(i,j).r,I(i,j).g,I(i,j).b};
             if(l(i,j)<0)
                 continue;
             std::vector<int>& c = centers[l(i,j)];
@@ -240,23 +240,23 @@ void moveCenters(std::vector<Superpixel>& sp,
 /// The main SLIC loop.
 /// The number of superpixels is deduced from K and the image dimensions.
 /// \a l is a map giving for each pixel the index of the assigned superpixel.
-/// \param Img The input image
+/// \param I The input image
 /// \param[out] l Label map of superpixel index
 /// \param m Compactness parameter
 /// \param K Required number of superpixels
 /// \param g Radius for minimal gradient search
 /// \return Collection of superpixels
-std::vector<Superpixel> SLIC(const Image<Color>& Img,
+std::vector<Superpixel> SLIC(const Image<Color>& I,
                              Image<int>& l, float m, int K, int g) {
     clock_t t0 = clock();
 
-    const int w=Img.w, h=Img.h;
+    const int w=I.w, h=I.h;
 
     std::vector<Superpixel> sp;
     int S;  // the size of the grid step
 
-    initSuperpixels(sp, K, S, Img);
-    moveMinGradient(sp, Img, g);
+    initSuperpixels(sp, K, S, I);
+    moveMinGradient(sp, I, g);
 
     l.fill(-1);
     Image<float> d(w,h);  // distance map to superpixel's color
@@ -269,8 +269,8 @@ std::vector<Superpixel> SLIC(const Image<Color>& Img,
     std::cout << "Motions:";
     for(int i=0; i<MAX_ITER_SLIC && E>0; i++) { // Main loop
         d.fill(std::numeric_limits<float>::max());
-        assignmentStep(sp, Img, wSpace, S, l, d);
-        updateStep(centers, l, Img); // Compute new centers of superpixels
+        assignmentStep(sp, I, wSpace, S, l, d);
+        updateStep(centers, l, I); // Compute new centers of superpixels
         E = computeError(sp, centers);
         moveCenters(sp, centers); // Assign new centers to superpixels
         std::cout << ' ' << E << std::flush;
@@ -355,10 +355,10 @@ void discardMinorCC(Image<int>& cc, const std::vector<int>& compSizes,
 /// Recompute the color of the superpixels.
 /// \param sp Superpixels
 /// \param l Index map of superpixels
-/// \param Img Input image
+/// \param I Input image
 void computeSuperpixelColors(std::vector<Superpixel>& sp,
                              const Image<int>& l,
-                             const Image<Color>& Img) {
+                             const Image<Color>& I) {
     size_t K = sp.size();
     Image<int> col(K,4); // (R,G,B,count)
     col.fill(0);
@@ -368,7 +368,7 @@ void computeSuperpixelColors(std::vector<Superpixel>& sp,
         for(int i=0; i<w; i++) {
             int k = l(i,j);
             if(k>=0) {
-                Color c = Img(i,j);
+                Color c = I(i,j);
                 col(k,0) += c.r;
                 col(k,1) += c.g;
                 col(k,2) += c.b;
@@ -386,9 +386,9 @@ void computeSuperpixelColors(std::vector<Superpixel>& sp,
 /// Assign orphan pixels to nearest (in color) superpixel they are connected to
 /// \param sp The superpixels
 /// \param[in,out] l
-/// \param Img
+/// \param I
 void assignOrphans(const std::vector<Superpixel>& sp, Image<int>& l,
-                   const Image<Color>& Img) {
+                   const Image<Color>& I) {
     const int w=l.w, h=l.h;
 
     std::queue<Pixel> Q;
@@ -424,7 +424,7 @@ void assignOrphans(const std::vector<Superpixel>& sp, Image<int>& l,
         for(int n=0; n<4; n++) { // Testing neighbors
             Pixel q = neighbor(p,n);
             if(! l.inside(q) || l(q)<0) continue;
-            int dist = color_dist(Img(p), sp[l(q)].col);
+            int dist = color_dist(I(p), sp[l(q)].col);
             if(dist < minDist) {
                 minDist = dist;
                 nearest = l(q);
@@ -439,9 +439,9 @@ void assignOrphans(const std::vector<Superpixel>& sp, Image<int>& l,
 /// Pixels of minor cc get assigned to adjacent superpixel with closest color.
 /// \param[in,out] sp The superpixels
 /// \param[in,out] l Labels of superpixels
-/// \param Img Image
+/// \param I Image
 void enforceConnectivity(std::vector<Superpixel>& sp, Image<int>& l,
-                         const Image<Color>& Img) {
+                         const Image<Color>& I) {
     Image<int> cc(l.w,l.h); // Labels of cc
     std::vector<int> compSizes; // Sizes of the cc
 
@@ -449,8 +449,8 @@ void enforceConnectivity(std::vector<Superpixel>& sp, Image<int>& l,
 
     labelCC(cc, compSizes, l);
     discardMinorCC(cc, compSizes, l, sp.size());
-    computeSuperpixelColors(sp, l, Img);
-    assignOrphans(sp, l, Img);
+    computeSuperpixelColors(sp, l, I);
+    assignOrphans(sp, l, I);
 
     clock_t t1 = clock();
     std::cout << "Time CC:   " << (t1-t0)/(double)CLOCKS_PER_SEC << std::endl;

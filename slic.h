@@ -28,12 +28,12 @@ public:
 };
 
 /// The SLIC algorithm
-std::vector<Superpixel> SLIC(const Image<Color>& Img,
+std::vector<Superpixel> SLIC(const Image<Color>& I,
                              Image<int>& l, float m, int K, int g=0);
 
 /// Ensure that the Superpixels are connected
 void enforceConnectivity(std::vector<Superpixel>& sp, Image<int>& l,
-                         const Image<Color>& Img);
+                         const Image<Color>& I);
 
 /// Fill set of pixels for each superpixel.
 Pixel* fillSuperpixels(std::vector<Superpixel>& sp, const Image<int>& l);
