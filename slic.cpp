@@ -19,7 +19,8 @@
 /// Maximum iterations of SLIC
 static const int MAX_ITER_SLIC=1000;
 
-inline int sq(int x) { return x*x; }
+template <typename T>
+inline T sq(T x) { return x*x; }
 
 /// Squared Euclidian distance between the two colors. Eq. (11)
 /// \param c1 Color
@@ -31,8 +32,8 @@ int color_dist(const Color& c1, const Color& c2) {
 
 /// Construct the Superpixel with position, color and size
 Superpixel::Superpixel(int x0, int y0, const Color& c) {
-    x = x0;
-    y = y0;
+    x = (float)x0;
+    y = (float)y0;
     col = c;
     size = 0;
     pix = 0;
@@ -45,9 +46,9 @@ Superpixel::Superpixel(int x0, int y0, const Color& c) {
 /// \param wSpace Compactness parameter (weight of spatial distance)
 /// \return Squared distance
 float Superpixel::dist5D(int i, int j, const Color& c, float wSpace) const {
-    int eucldist = sq(x-i)+sq(y-j);
+    float eucldist = sq(x-(float)i)+sq(y-(float)j);
     int colordist = color_dist(col,c);
-    return wSpace*wSpace*(float)eucldist + (float)colordist;
+    return wSpace*wSpace*eucldist + (float)colordist;
 }
 
 /// Return the n-th neighbor (4-conn) of (i,j), starting with right (n=0)
@@ -135,15 +136,15 @@ void moveMinGradient(std::vector<Superpixel>& sp,
     size_t K = sp.size();
     for(size_t k=0; k<K; k++) {
         int minNorm = std::numeric_limits<int>::max();
-        const int x=sp[k].x, y=sp[k].y;
+        const int x=(int)sp[k].x, y=(int)sp[k].y;
         for(int j=-radius; j<=radius; j++)
             for(int i=-radius; i<=radius; i++) {
                 Pixel p(x+i,y+j);
                 if(I.inside(p)) {
                     int g = sqNormGradient(I,p);
                     if(g < minNorm) {
-                        sp[k].x = p.x;
-                        sp[k].y = p.y;
+                        sp[k].x = (float)p.x;
+                        sp[k].y = (float)p.y;
                         minNorm = g;
                     }
                 }
@@ -167,7 +168,7 @@ void assignmentStep(const std::vector<Superpixel>& sp,
     for(int k=0; k<K; k++) // Look in 2Sx2S surrounding of superpixel center
         for(int i=-S; i<S; i++)
             for(int j=-S; j<S; j++) {
-                int ip=sp[k].x+i, jp=sp[k].y+j;
+                int ip=int(sp[k].x+.5f)+i, jp=int(sp[k].y+.5f)+j;
                 if(I.inside(ip,jp)) {
                     Color col = I(ip,jp);
                     float dist = sp[k].dist5D(ip, jp, col, wSpace);
@@ -183,7 +184,7 @@ void assignmentStep(const std::vector<Superpixel>& sp,
 /// \param[out] centers: 6-vector (x,y,r,g,b,n) with n the number of pixels.
 /// \param l Index map of superpixels
 /// \param I Input image
-void updateStep(std::vector< std::vector<int> >& centers,
+void updateStep(std::vector< std::vector<float> >& centers,
                 const Image<int>& l, const Image<Color>& I) {
     int K = (int)centers.size();
     for(int k=0; k<K; k++)
@@ -197,9 +198,9 @@ void updateStep(std::vector< std::vector<int> >& centers,
             int pix[5] = {i,j, I(i,j).r,I(i,j).g,I(i,j).b};
             if(l(i,j)<0)
                 continue;
-            std::vector<int>& c = centers[l(i,j)];
+            std::vector<float>& c = centers[l(i,j)];
             for(int s=0; s<5; s++)
-                c[s] += pix[s];
+                c[s] += (float)pix[s];
             ++c[5];
         }
 
@@ -214,7 +215,7 @@ void updateStep(std::vector< std::vector<int> >& centers,
 /// \param Superpixels
 /// \param centers
 float computeError(const std::vector<Superpixel>& sp,
-                   const std::vector< std::vector<int> >& centers) {
+                   const std::vector< std::vector<float> >& centers) {
     float E=0;
     size_t K = sp.size();
     assert(centers.size() == K);
@@ -228,12 +229,13 @@ float computeError(const std::vector<Superpixel>& sp,
 /// \param sp Superpixels
 /// \param centers 6-vector (x,y,r,g,b,n) with n the number of pixels
 void moveCenters(std::vector<Superpixel>& sp,
-                 const std::vector< std::vector<int> >& centers) {
+                 const std::vector< std::vector<float> >& centers) {
     size_t K = sp.size();
-    for(int k=0; k<K; k++) {
+    for(size_t k=0; k<K; k++) {
         sp[k].x = centers[k][0];
         sp[k].y = centers[k][1];
-        Color col(centers[k][2], centers[k][3], centers[k][4]);
+        typedef unsigned char byte;
+        Color col((byte)centers[k][2],(byte)centers[k][3],(byte)centers[k][4]);
         sp[k].col = col;
         sp[k].size = centers[k][5];
     }
@@ -264,12 +266,13 @@ std::vector<Superpixel> SLIC(const Image<Color>& I,
     Image<float> d(w,h);  // distance map to superpixel's color
     const float wSpace = m/(float)S; // spatial weight in 5D distance
 
-    std::vector<int> il(6, 0); // 6 times zero
-    std::vector< std::vector<int> > centers(sp.size(), il);
+    std::vector<float> il(6, 0); // 6 times zero
+    std::vector< std::vector<float> > centers(sp.size(), il);
 
     float E = 1.0;
     std::cout << "Motions:";
-    for(int i=0; i<MAX_ITER_SLIC && E>0; i++) { // Main loop
+    int i;
+    for(i=0; i<MAX_ITER_SLIC && E>0; i++) { // Main loop
         d.fill(std::numeric_limits<float>::max());
         assignmentStep(sp, I, wSpace, S, l, d);
         updateStep(centers, l, I); // Compute new centers of superpixels
@@ -277,7 +280,7 @@ std::vector<Superpixel> SLIC(const Image<Color>& I,
         moveCenters(sp, centers); // Assign new centers to superpixels
         std::cout << ' ' << E << std::flush;
     }
-    std::cout << std::endl;
+    std::cout << std::endl << "Iterations: " << i << std::endl;
     if(E>0)
         std::cerr << "Warning: SLIC stopped before convergence at "
                   << MAX_ITER_SLIC << " iterations" << std::endl;

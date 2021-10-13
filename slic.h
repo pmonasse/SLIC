@@ -16,9 +16,9 @@
 /// The superpixel has a center, a set of pixels and a mean color.
 class Superpixel {
 public:
-    int x, y;                ///< Barycenter coordinates
-    int size;                ///< Superpixel size (number of pixels contained)
-    Color col;      ///< Average color
+    float x,y;  ///< Barycenter coordinates
+    int size;   ///< Superpixel size (number of pixels contained)
+    Color col;  ///< Average color
     Pixel* pix; ///< Pixels composing the superpixel
 public:
     Superpixel(int x0, int y0, const Color& c);
