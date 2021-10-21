@@ -21,6 +21,13 @@ Usage
 -c ARG Color of boundary (255,255,255)
 ```
 
+Example
+-------
+```
+./SLIC data/exampleIn.jpg out.jpg
+'''
+Compare resulting image out.jpg with data/exampleOut.jpg.
+
 Files
 -----
 AUTHORS.txt     cmdLine.h  io_jpg.h     LICENSE.txt  slic.cpp(*)   third_party
