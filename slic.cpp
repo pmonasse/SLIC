@@ -272,7 +272,7 @@ std::vector<Superpixel> SLIC(const Image<Color>& I,
     float E = 1.0;
     std::cout << "Motions:";
     int i;
-    for(i=0; i < MAX_ITER_SLIC && E > 0; i++) { // Main loop
+    for(i = 0; i < MAX_ITER_SLIC && E > 0; i++) { // Main loop
         d.fill(std::numeric_limits<float>::max());
         assignmentStep(sp, I, wSpace, S, l, d);
         updateStep(centers, l, I); // Compute new centers of superpixels
