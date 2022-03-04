@@ -18,6 +18,8 @@
 
 /// Maximum iterations of SLIC
 static const int MAX_ITER_SLIC=1000;
+/// RMSE threshold of superpixel shift to stop
+static const float RMSE_MAX=0.5f;
 
 template <typename T>
 inline T sq(T x) { return x*x; }
@@ -211,7 +213,7 @@ void updateStep(std::vector< std::vector<float> >& centers,
                 centers[k][s] /= centers[k][5];
 }
 
-/// Squared Euclidian space distance of superpixels' motion
+/// Root Mean Squared Euclidian space distance of superpixels' motion
 /// \param Superpixels
 /// \param centers
 float computeError(const std::vector<Superpixel>& sp,
@@ -222,7 +224,7 @@ float computeError(const std::vector<Superpixel>& sp,
     for(int k=0; k<K; k++)
         E += (centers[k][0]-sp[k].x)*(centers[k][0]-sp[k].x) +
              (centers[k][1]-sp[k].y)*(centers[k][1]-sp[k].y);
-    return E;
+    return sqrt(E/float(K));
 }
 
 /// Final process of update step: move superpixel centers to their new positions
@@ -269,10 +271,10 @@ std::vector<Superpixel> SLIC(const Image<Color>& I,
     std::vector<float> il(6, 0); // 6 times zero
     std::vector< std::vector<float> > centers(sp.size(), il);
 
-    float E = 1.0;
-    std::cout << "Motions:";
+    float E = 2*RMSE_MAX+1;
+    std::cout << "Motion RMSE:";
     int i;
-    for(i=0; i<MAX_ITER_SLIC && E>0; i++) { // Main loop
+    for(i=0; i<MAX_ITER_SLIC && E>RMSE_MAX; i++) { // Main loop
         d.fill(std::numeric_limits<float>::max());
         assignmentStep(sp, I, wSpace, S, l, d);
         updateStep(centers, l, I); // Compute new centers of superpixels
@@ -281,7 +283,7 @@ std::vector<Superpixel> SLIC(const Image<Color>& I,
         std::cout << ' ' << E << std::flush;
     }
     std::cout << std::endl << "Iterations: " << i << std::endl;
-    if(E>0)
+    if(E>RMSE_MAX)
         std::cerr << "Warning: SLIC stopped before convergence at "
                   << MAX_ITER_SLIC << " iterations" << std::endl;
     
