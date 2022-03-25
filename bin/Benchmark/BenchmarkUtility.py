@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 import subprocess
 
 
@@ -50,7 +50,12 @@ class BenchmarkUtility:
     def getImage(self, pathToImg):
         '''Get the image at pathToImg'''
         # Open image
-        currImg = Image.open(pathToImg)
+        try:
+            currImg = Image.open(pathToImg)
+        except UnidentifiedImageError:
+            return False
+        except FileNotFoundError:
+            return False
         # Set image size
         self._currImgSize = currImg.size[0] * currImg.size[1]
         # Set name and path
@@ -58,6 +63,7 @@ class BenchmarkUtility:
         self._currImgName = pathToImg.split(os.sep)[-1]
         self._constructImageHeader()
         currImg.close()
+        return True
 
     def _runSlicOnCurrImg(self):
         '''Runs SLIC on current image and returns the output as as string'''
@@ -92,7 +98,10 @@ class BenchmarkUtility:
         return userVerif == 'y'
 
     def _checkImgFile(self, fileName):
-        return fileName.split('.')[1] in self._possibleImgTypes
+        try:
+            return fileName.split('.')[1] in self._possibleImgTypes
+        except IndexError:
+            return False
 
     def runBenchmark(self):
         '''Run SLIC on every image under self._rootPath and stores the
@@ -111,14 +120,16 @@ class BenchmarkUtility:
                 # If the number of images has been reached, break
                 if self._stop is not None and self._count >= self._stop:
                     print("The specified number of images has been reached")
-                    break
+                    return
 
                 # If this file is not an image, go to next file
                 if not self._checkImgFile(name):
                     continue
 
                 # Get the image with PIL.Image
-                self.getImage(os.path.abspath(os.path.join(root, name)))
+                abspath = os.path.abspath(os.path.join(root, name))
+                if not self.getImage(abspath):
+                    continue
                 # Count it
                 self._count += 1
                 # Construct header
