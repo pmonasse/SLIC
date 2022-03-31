@@ -97,7 +97,7 @@ void slic_image(const Image<Color>& in, Image<Color>& out,
 int main(int argc, char* argv[]) {
     CmdLine cmd;
     int K=1000; // required number of superpixels
-    float m=100; // compactness parameter
+    float m=40; // compactness parameter
     Color col = WHITE;
     int g=0;
     cmd.add( make_option('k',K).doc("Required number of superpixels") );
