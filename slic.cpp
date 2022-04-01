@@ -3,7 +3,7 @@
  * @file slic.cpp
  * @brief SLIC algorithm (superpixels)
  *
- * Copyright (c) 2021 Robin Gay, Pascal Monasse
+ * Copyright (c) 2021-2022 Robin Gay, Pascal Monasse
  */
 
 #include "slic.h"
@@ -322,9 +322,7 @@ void labelCC(Image<int>& cc, std::vector<int>& H, const Image<int>& l) {
                     }
                 }
             }
-            // std::cout << H.back() << ' ' << std::flush;
         }
-    // std::cout << std::endl;
 }
 
 /// Reduce superpixels to their largest connected component. Algo. 7

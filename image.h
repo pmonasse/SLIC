@@ -3,7 +3,7 @@
  * @file image.h
  * @brief Elementary image class
  *
- * Copyright (c) 2021 Robin Gay, Pascal Monasse
+ * Copyright (c) 2021-2022 Robin Gay, Pascal Monasse
  */
 
 #ifndef IMAGE_H

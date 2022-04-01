@@ -3,7 +3,7 @@
  * @file main.cpp
  * @brief input/output for SLIC algorithm
  *
- * Copyright (c) 2021 Robin Gay, Pascal Monasse
+ * Copyright (c) 2021-2022 Robin Gay, Pascal Monasse
  */
 
 #include "slic.h"

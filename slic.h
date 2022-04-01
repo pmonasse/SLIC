@@ -3,7 +3,7 @@
  * @file slic.h
  * @brief SLIC algorithm (superpixels)
  *
- * Copyright (c) 2021 Robin Gay, Pascal Monasse
+ * Copyright (c) 2021-2022 Robin Gay, Pascal Monasse
  */
 
 #ifndef SLIC_H
