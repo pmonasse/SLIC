@@ -1,7 +1,11 @@
 Bilateral K-Means for Superpixel Computation (the SLIC Method)
-
+version 1.0 (2022)
 by Robin Gay <robin.gay@eleves.enpc.fr>
 and Pascal Monasse <pascal.monasse@enpc.fr>
+
+Updates and future versions
+---------------------------
+https://github.com/pmonasse/SLIC
 
 Build
 -----
